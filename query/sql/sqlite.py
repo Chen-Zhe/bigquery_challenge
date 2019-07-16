@@ -1,6 +1,6 @@
 import sqlite3
 import pandas as pd
-from query_backend.query_commons import QueryResponse
+from query.query_commons import QueryResponse
 
 
 class Sqlite3Backend:
