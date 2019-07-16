@@ -1,6 +1,5 @@
 from flask import Flask, escape, request, Response
 from query.query_functions import *
-from errors import *
 
 app = Flask(__name__)
 

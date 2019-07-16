@@ -10,7 +10,7 @@ class DataTables:
 
 
 # class TableCollections:
-    
+
 
 
 class DateFilterFrontend:
@@ -24,8 +24,8 @@ class DateFilterFrontend:
     def date_range_query(self, query, date_col, start_date, end_date):
         self.validate_date_string(start_date)
         self.validate_date_string(end_date)
-        if query.find(self.supported_date_format) != -1:
-            query = query.replace(self.condition_placeholder, f"date({date_col}) >= {start_date} AND date({date_col}) <= {end_date}")
+        if query.find(self.condition_placeholder) != -1:
+            query = query.replace(self.condition_placeholder, f"date({date_col}) >= '{start_date}' AND date({date_col}) <= '{end_date}'")
             return self.backend.query(query)
         else:
             raise ServerException("Incorrect query configuration")
@@ -39,6 +39,6 @@ class DateFilterFrontend:
         """
 
         try:
-            datetime.strptime(date_string, format)
+            datetime.strptime(date_string, DateFilterFrontend.supported_date_format)
         except ValueError as e:
             raise RequestException(f"Incorrect date format resulting in {str(e)}")
