@@ -2,6 +2,16 @@ from query.backend_factory import get_sql_backend
 from errors import *
 from datetime import datetime
 
+class DataTables:
+    def __init__(self, name, date_range_start, date_range_end):
+        self.name = name
+        self.date_range_start = date_range_start
+        self.date_range_end = date_range_end
+
+
+# class TableCollections:
+    
+
 
 class DateFilterFrontend:
 
