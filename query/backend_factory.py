@@ -1,5 +1,5 @@
-from query_backend.sql.google_bigquery import BigQueryBackend
-from query_backend.sql.sqlite import Sqlite3Backend
+from query.sql.google_bigquery import BigQueryBackend
+from query.sql.sqlite import Sqlite3Backend
 from errors import ServerException
 
 def get_sql_backend(name, *args):

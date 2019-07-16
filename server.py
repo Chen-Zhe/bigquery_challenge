@@ -1,5 +1,5 @@
 from flask import Flask, escape, request, Response
-from query_backend.query_functions import *
+from query.query_functions import *
 import json
 from functools import wraps
 from errors import *
