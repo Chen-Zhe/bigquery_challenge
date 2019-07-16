@@ -9,7 +9,7 @@ backend = "sqlite"
 @handle_exceptions
 def total_trips_over_date_range(start_date, end_date):
     frontend = DateFilterFrontend(backend)
-
+    
     query = (
         "SELECT date(dropoff_datetime) AS date, count(*) AS total_trips FROM `tlc_yellow_trips_2016` "
         f"WHERE {frontend.condition_placeholder} "
@@ -24,4 +24,3 @@ def total_trips_over_date_range(start_date, end_date):
         response = HttpResponse(json.dumps(json_format), HttpResponse.ContentType.JSON, HttpResponse.Status.OK)
 
     return response
-
