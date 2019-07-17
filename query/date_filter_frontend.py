@@ -21,7 +21,7 @@ def validate_date_string(date_string):
 
 
 class DataTable:
-    def __init__(self, name, date_range_start_string, date_range_end_string):
+    def __init__(self, sql_name, date_range_start_string, date_range_end_string):
         self.sql_name = sql_name
         self.date_range_start = validate_date_string(date_range_start_string)
         self.date_range_end = validate_date_string(date_range_end_string)
@@ -31,15 +31,21 @@ class TableCollection:
     def __init__(self, table_group_names):
         self.tables = {group: list() for group in table_group_names}
 
-    def register_table(self, table_name, data_table):
+    def register_table(self, group_name, data_table):
         if group_name not in self.tables:
-            logging.warning(f"group {group_name} does not exist in this table collection")
+            logging.error(f"group {group_name} does not exist in this table collection")
             return
         
         self.tables[group_name].append(data_table)
+        self.tables[group_name].sort(key=lambda x: x.date_range_start)
 
-    def get_tables(self, start_date, end_date):
-        pass
+    def get_tables(self, group_name, start_date, end_date):
+        if group_name not in self.tables:
+            logging.error(f"group {group_name} does not exist in this table collection")
+            return
+
+        registered_tables = self.tables[group_name]
+
 
 
 
