@@ -19,8 +19,8 @@ def total_trips_over_date_range(start_date, end_date):
     if result.empty_response:
         raise RequestException("Empty Result")
     else:
-        json_format = [{key: value for (key, value) in zip(result.response.columns, row)}
-                for row in result.response.values]
+        json_format = {"data": [{key: value for (key, value) in zip(result.response.columns, row)}
+                       for row in result.response.values], "status": "OK"}
         response = HttpResponse(json.dumps(json_format), HttpResponse.ContentType.JSON, HttpResponse.Status.OK)
 
     return response
