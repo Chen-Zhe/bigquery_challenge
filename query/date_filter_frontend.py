@@ -130,7 +130,7 @@ class DateFilterFrontend:
             relevant_group_tables = self.tables.get_tables(group_name, date_start, date_end)
 
             if not relevant_group_tables:
-                raise ServerException("")
+                raise ServerException(f"Requested table group {group_name} has no relevant table between {date_start.strftime(supported_date_format)} and {date_end.strftime(supported_date_format)}")
 
             relevant_tables[table_name] = relevant_group_tables
 
