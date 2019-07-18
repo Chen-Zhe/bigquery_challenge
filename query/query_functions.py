@@ -1,6 +1,8 @@
 from query.date_filter_frontend import SqlDateFilter, DataTable, SqlTableCollection
 from errors import *
 import numpy as np
+import pandas as pd
+import s2sphere
 from query.query_commons import HttpResponse
 import json
 
@@ -55,12 +57,12 @@ def join_dataframes(df_list, key_col, merge=add):
 def total_trips_over_date_range(start_date, end_date):
     f = SqlDateFilter(backend, tables)
 
-    date_col = "dropoff_datetime"
+    date_col = "pickup_datetime"
     result_dfs = list()
 
     for table_group in ["tlc_green_trips", "tlc_yellow_trips"]:
         query = (
-            f"SELECT date({date_col}) AS date, count(*) AS total_trips FROM {f.table_name.format(table_group)} "
+            f"SELECT date({date_col}) AS date, COUNT(*) AS total_trips FROM {f.table_name.format(table_group)} "
             f"WHERE {f.condition_placeholder} "
             f"GROUP BY date({date_col})")
         result = f.date_range_query(query, date_col, start_date, end_date)
@@ -78,3 +80,28 @@ def total_trips_over_date_range(start_date, end_date):
     response = HttpResponse(json.dumps(json_format), HttpResponse.ContentType.JSON, HttpResponse.Status.OK)
 
     return response
+
+
+@handle_exceptions
+def average_fare_heatmap_for_date(date):
+    f = SqlDateFilter(backend, tables)
+
+    date_col = "pickup_datetime"
+    result_dfs = list()
+
+    for table_group in ["tlc_green_trips", "tlc_yellow_trips"]:
+        query = (
+            f"SELECT pickup_latitude, pickup_longitude, fare_amount FROM {f.table_name.format(table_group)} "
+            f"WHERE {f.condition_placeholder} "
+            f"WHERE pickup_latitude IS NOT NULL AND  pickup_longitude IS NOT NULL")
+        result = f.date_query(query, date_col, date)
+
+        if not result.empty_response:
+            result_dfs.append(result.response)
+
+    if not result_dfs:
+        raise RequestException("Empty Result")
+
+    all_trips = pd.concat(result_dfs)
+    
+
