@@ -1,5 +1,4 @@
 from query.backend_factory import get_sql_backend
-from query.query_commons import QueryResponse
 from errors import *
 from datetime import datetime
 import re
