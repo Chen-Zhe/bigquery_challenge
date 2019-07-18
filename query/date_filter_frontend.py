@@ -30,7 +30,7 @@ class DataTable:
         self.date_range_end = validate_date_string(date_range_end_string)
 
 
-class TableCollection:
+class SqlTableCollection:
     def __init__(self, table_group_names):
         self.tables = {group: list() for group in table_group_names}
 
@@ -61,9 +61,12 @@ class TableCollection:
 
         return relevant_tables
 
+    @staticmethod
+    def gen_sql_query_tables(group_name, table_name_list):
+        return f"({' UNION ALL '.join([f'SELECT * FROM `{name}`' for name in table_name_list])}) {group_name}"
 
-class DateFilterFrontend:
 
+class SqlDateFilter:
     condition_placeholder = "#DateCondition"
     table_name_prefix = "#TableGroup"
     table_name = table_name_prefix + "({})"
@@ -99,26 +102,36 @@ class DateFilterFrontend:
 
     def valid_date_range_query(self, query, date_col, date_start, date_end=None):
         if query.find(self.condition_placeholder) == -1:
-            raise ServerException("Incorrect query configuration: date condition filter cannot be inserted")
+            raise QueryGenerationException("Incorrect query configuration: date condition filter cannot be inserted")
 
         if query.find(self.table_name_prefix) == -1:
-            raise ServerException("Incorrect query configuration: table names cannot be inserted")
+            raise QueryGenerationException("Incorrect query configuration: table names cannot be inserted")
 
-        if date_end is None:
-            query = query.replace(self.condition_placeholder,
-                                  f"date({date_col}) = '{date_start.strftime(supported_date_format)}'")
-        else:
-            if date_start > date_end:
-                raise RequestException("start date must be earlier than end date")
+        query = query.replace(self.condition_placeholder,
+                              self.gen_sql_date_range_condition(date_col, date_start, date_end))
 
-            query = query.replace(self.condition_placeholder,
-                                  f"date({date_col}) >= '{date_start.strftime(supported_date_format)}'"
-                                  f"AND date({date_col}) <= '{date_end.strftime(supported_date_format)}'")
+        tables = self.get_table_groups(query, date_start, date_end)
 
+        for group_name, table_list in tables.items():
+            query = query.replace(self.table_name.format(group_name),
+                                  self.tables.gen_sql_query_tables(group_name, table_list))
+
+        # print(query)
         return self.backend.query(query)
 
+    @staticmethod
+    def gen_sql_date_range_condition(date_col, date_start, date_end=None):
+        if date_end is None:
+            return f"date({date_col}) = '{date_start.strftime(supported_date_format)}'"
+        else:
+            if date_start > date_end:
+                raise RequestException("start date must  be earlier than end date")
+
+            return f"date({date_col}) >= '{date_start.strftime(supported_date_format)}'" \
+                f"AND date({date_col}) <= '{date_end.strftime(supported_date_format)}'"
+
     def get_table_groups(self, query, date_start, date_end):
-        matched_table_names = re.findall(self.table_name_regex.format(r"\S"), query)
+        matched_table_names = re.findall(self.table_name_regex.format(r"\S+"), query)
 
         relevant_tables = dict()
 
@@ -126,13 +139,12 @@ class DateFilterFrontend:
             if table_name in relevant_tables:
                 continue
 
-            group_name = re.match(self.table_name_regex.format(r"(\S)"), table_name).group(1)
+            group_name = re.match(self.table_name_regex.format(r"(\S+)"), table_name).group(1)
             relevant_group_tables = self.tables.get_tables(group_name, date_start, date_end)
 
             if not relevant_group_tables:
-                raise ServerException(f"Requested table group {group_name} has no relevant table between {date_start.strftime(supported_date_format)} and {date_end.strftime(supported_date_format)}")
+                raise QueryGenerationException(f"Requested table group {group_name} has no relevant table between {date_start.strftime(supported_date_format)} and {date_end.strftime(supported_date_format)}")
 
-            relevant_tables[table_name] = relevant_group_tables
+            relevant_tables[group_name] = [table.sql_name for table in relevant_group_tables]
 
         return relevant_tables
-

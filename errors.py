@@ -15,6 +15,10 @@ class ServerException(Exception):
     pass
 
 
+class QueryGenerationException(ServerException):
+    pass
+
+
 def handle_exceptions(f):
     @wraps(f)
     def decorated(*args, **kwargs):
