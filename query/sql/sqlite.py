@@ -17,7 +17,10 @@ class Sqlite3Backend:
         self.conn.row_factory = sqlite3.Row
         self.cursor = self.conn.cursor()
 
-    def query(self, sql_string, limit=10000):
+    def query(self, sql_string="", limit=10000):
+        if not sql_string:
+            return QueryResponse(None, exceed_limit=False, empty_response=True)
+
         query_job = self.cursor.execute(f"{sql_string} LIMIT {limit+1}")
         query_result = [row for row in query_job]
         total_rows = len(query_result)

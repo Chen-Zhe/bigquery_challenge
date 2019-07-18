@@ -1,4 +1,5 @@
 from query.backend_factory import get_sql_backend
+from query.query_commons import QueryResponse
 from errors import *
 from datetime import datetime
 import re
@@ -118,12 +119,16 @@ class SqlDateFilter:
 
         tables = self.get_table_groups(query, date_start, date_end)
 
-        for group_name, table_list in tables.items():
-            query = query.replace(self.table_name.format(group_name),
-                                  self.tables.gen_sql_query_tables(group_name, table_list))
+        if tables:
+            for group_name, table_list in tables.items():
+                query = query.replace(self.table_name.format(group_name),
+                                      self.tables.gen_sql_query_tables(group_name, table_list))
 
-        # print(query)
-        return self.backend.query(query)
+            # print(query)
+            return self.backend.query(query)
+        else:
+            # this query won't return anything due to no relevant table. Execute empty query
+            return self.backend.query()
 
     @staticmethod
     def gen_sql_date_range_condition(date_col, date_start, date_end):
@@ -148,9 +153,10 @@ class SqlDateFilter:
             relevant_group_tables = self.tables.get_tables(group_name, date_start, date_end)
 
             if not relevant_group_tables:
-                raise RequestException(f"Requested table group '{group_name}' has no relevant table between "
-                                               f"{date_start.strftime(supported_date_format)}"
-                                               f" and {date_end.strftime(supported_date_format)}")
+                # raise RequestException(f"Requested table group '{group_name}' has no relevant table between "
+                #                                f"{date_start.strftime(supported_date_format)}"
+                #                                f" and {date_end.strftime(supported_date_format)}")
+                return dict()
 
             relevant_tables[group_name] = [table.sql_name for table in relevant_group_tables]
 
