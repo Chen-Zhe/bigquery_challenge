@@ -29,6 +29,9 @@ class DataTable:
         self.date_range_start = validate_date_string(date_range_start_string)
         self.date_range_end = validate_date_string(date_range_end_string)
 
+        if self.date_range_start > self.date_range_end:
+            raise ServerException(f"Table '{sql_name}' has incorrectly-configured date range")
+
 
 class SqlTableCollection:
     def __init__(self, table_group_names):
@@ -56,7 +59,7 @@ class SqlTableCollection:
         registered_tables = self.tables[group_name]
 
         for table in registered_tables:
-            if table.date_range_start <= date_start and date_end <= table.date_range_end:
+            if table.date_range_start <= date_end and date_start <= table.date_range_end:
                 relevant_tables.append(table)
 
         return relevant_tables
@@ -107,6 +110,9 @@ class SqlDateFilter:
         if query.find(self.table_name_prefix) == -1:
             raise QueryGenerationException("Incorrect query configuration: table names cannot be inserted")
 
+        if date_end is None:
+            date_end = date_start
+
         query = query.replace(self.condition_placeholder,
                               self.gen_sql_date_range_condition(date_col, date_start, date_end))
 
@@ -120,15 +126,14 @@ class SqlDateFilter:
         return self.backend.query(query)
 
     @staticmethod
-    def gen_sql_date_range_condition(date_col, date_start, date_end=None):
-        if date_end is None:
-            return f"date({date_col}) = '{date_start.strftime(supported_date_format)}'"
+    def gen_sql_date_range_condition(date_col, date_start, date_end):
+        if date_start > date_end:
+            raise RequestException("start date must be earlier than end date")
+        elif date_start == date_end:
+            return f"(date({date_col}) = '{date_start.strftime(supported_date_format)}')"
         else:
-            if date_start > date_end:
-                raise RequestException("start date must  be earlier than end date")
-
-            return f"date({date_col}) >= '{date_start.strftime(supported_date_format)}'" \
-                f"AND date({date_col}) <= '{date_end.strftime(supported_date_format)}'"
+            return f"(date({date_col}) >= '{date_start.strftime(supported_date_format)}'" \
+                f"AND date({date_col}) <= '{date_end.strftime(supported_date_format)}')"
 
     def get_table_groups(self, query, date_start, date_end):
         matched_table_names = re.findall(self.table_name_regex.format(r"\S+"), query)
@@ -143,7 +148,7 @@ class SqlDateFilter:
             relevant_group_tables = self.tables.get_tables(group_name, date_start, date_end)
 
             if not relevant_group_tables:
-                raise QueryGenerationException(f"Requested table group {group_name} has no relevant table between "
+                raise RequestException(f"Requested table group '{group_name}' has no relevant table between "
                                                f"{date_start.strftime(supported_date_format)}"
                                                f" and {date_end.strftime(supported_date_format)}")
 

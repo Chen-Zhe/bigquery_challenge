@@ -20,7 +20,7 @@ def total_trips():
 @app.route('/average_fare_heatmap')
 def average_fare_heatmap():
     date = request.args.get("date", None)
-    r = average_fare_heatmap_for_date(date)
+    r = average_fare_heatmap_of_date(date)
     return Response(response=r.content, content_type=r.content_type, status=r.status)
 
 

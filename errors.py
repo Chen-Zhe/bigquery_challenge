@@ -3,7 +3,6 @@ import json
 from query.query_commons import HttpResponse
 import logging
 
-
 logger = logging.getLogger(__name__)
 
 
