@@ -1,8 +1,8 @@
 from query.date_filter_frontend import SqlDateFilter, DataTable, SqlTableCollection
 from errors import *
 import numpy as np
-from query.query_commons import HttpResponse
-import json
+import pandas as pd
+from query.query_commons import df2json_dict, json2http
 
 backend = "sqlite"
 
@@ -19,11 +19,11 @@ else:
                                                        "2016-01-01", "2016-12-31"))
     tables.register_table("tlc_green_trips", DataTable("bigquery-public-data.new_york_taxi_trips.tlc_green_trips_2017",
                                                        "2017-01-01", "2017-12-31"))
-    tables.register_table("tlc_yellow_trips", DataTable("bigquery-public-data.new_york_taxi_trips.tlc_green_trips_2015",
+    tables.register_table("tlc_yellow_trips", DataTable("bigquery-public-data.new_york_taxi_trips.tlc_yellow_trips_2015",
                                                         "2015-01-01", "2015-12-31"))
-    tables.register_table("tlc_yellow_trips", DataTable("bigquery-public-data.new_york_taxi_trips.tlc_green_trips_2016",
+    tables.register_table("tlc_yellow_trips", DataTable("bigquery-public-data.new_york_taxi_trips.tlc_yellow_trips_2016",
                                                         "2016-01-01", "2016-12-31"))
-    tables.register_table("tlc_yellow_trips", DataTable("bigquery-public-data.new_york_taxi_trips.tlc_green_trips_2017",
+    tables.register_table("tlc_yellow_trips", DataTable("bigquery-public-data.new_york_taxi_trips.tlc_yellow_trips_2017",
                                                         "2017-01-01", "2017-12-31"))
 
 
@@ -55,13 +55,13 @@ def join_dataframes(df_list, key_col, merge=add):
 def total_trips_over_date_range(start_date, end_date):
     f = SqlDateFilter(backend, tables)
 
-    date_col = "dropoff_datetime"
+    date_col = "pickup_datetime"
     result_dfs = list()
 
     for table_group in ["tlc_green_trips", "tlc_yellow_trips"]:
         query = (
-            f"SELECT date({date_col}) AS date, count(*) AS total_trips FROM {f.table_name.format(table_group)} "
-            f"WHERE {f.condition_placeholder} "
+            f"SELECT date({date_col}) AS date, COUNT({date_col}) AS total_trips FROM {f.table_name.format(table_group)} "
+            f"WHERE {f.condition_placeholder} AND {date_col} IS NOT NULL "
             f"GROUP BY date({date_col})")
         result = f.date_range_query(query, date_col, start_date, end_date)
 
@@ -73,8 +73,43 @@ def total_trips_over_date_range(start_date, end_date):
 
     merged_result = join_dataframes(result_dfs, "date")
 
-    json_format = {"data": [{key: value for (key, value) in zip(merged_result.columns, row)}
-                   for row in merged_result.values], "status": "OK"}
-    response = HttpResponse(json.dumps(json_format), HttpResponse.ContentType.JSON, HttpResponse.Status.OK)
+    return json2http(df2json_dict(merged_result))
 
-    return response
+
+@handle_exceptions
+def average_fare_heatmap_of_date(date):
+    from s2sphere import Cell, LatLng
+
+    def calc_s2id(lat, lng, level):
+        s2id = Cell.from_lat_lng(LatLng(lat, lng)).id().parent(level).id()
+        return f"{s2id:016x}"
+
+    f = SqlDateFilter(backend, tables)
+
+    lat = "lat"
+    lng = "lng"
+    fare_amount = "fare_amount"
+    date_col = "pickup_datetime"
+    s2id = "s2id"
+    result_dfs = list()
+
+    for table_group in ["tlc_green_trips", "tlc_yellow_trips"]:
+        query = (
+            f"SELECT pickup_latitude AS {lat}, pickup_longitude AS {lng}, {fare_amount} FROM {f.table_name.format(table_group)} "
+            f"WHERE {f.condition_placeholder} "
+            f"AND pickup_latitude IS NOT NULL AND pickup_longitude IS NOT NULL AND {fare_amount} IS NOT NULL")
+        result = f.date_query(query, date_col, date)
+
+        if not result.empty_response:
+            result_dfs.append(result.response)
+
+    if not result_dfs:
+        raise RequestException("Empty Result")
+
+    all_trips = pd.concat(result_dfs)
+    all_trips[s2id] = all_trips.apply(lambda x: calc_s2id(x[lat], x[lng], 16)[:9], axis=1)
+
+    result = all_trips.groupby(s2id, as_index=False).agg({fare_amount: "mean"})
+    return json2http(df2json_dict(result))
+    
+
