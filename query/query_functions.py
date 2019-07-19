@@ -1,32 +1,12 @@
-from query.date_filter_frontend import SqlDateFilter, DataTable, SqlTableCollection
+from query.types.date.date_filter_query import SqlDateFilter
 from errors import *
 import numpy as np
 import pandas as pd
 from query.query_commons import df2json_list, json2http_ok
 from s2sphere import Cell, LatLng
-from query.backend_factory import SqlBackend
+from query.sql.backend_factory import SqlBackend
 
 backend = SqlBackend.SQLITE
-
-tables = SqlTableCollection(["tlc_green_trips", "tlc_yellow_trips"])
-if backend == SqlBackend.SQLITE:
-    tables.register_table("tlc_green_trips", DataTable("tlc_green_trips_2016", "2016-01-01", "2016-12-31"))
-    tables.register_table("tlc_yellow_trips", DataTable("tlc_yellow_trips_2016", "2016-01-01", "2016-12-31"))
-else:
-    tables.register_table("tlc_green_trips", DataTable("bigquery-public-data.new_york_taxi_trips.tlc_green_trips_2014",
-                                                       "2014-01-01", "2014-12-31"))
-    tables.register_table("tlc_green_trips", DataTable("bigquery-public-data.new_york_taxi_trips.tlc_green_trips_2015",
-                                                       "2015-01-01", "2015-12-31"))
-    tables.register_table("tlc_green_trips", DataTable("bigquery-public-data.new_york_taxi_trips.tlc_green_trips_2016",
-                                                       "2016-01-01", "2016-12-31"))
-    tables.register_table("tlc_green_trips", DataTable("bigquery-public-data.new_york_taxi_trips.tlc_green_trips_2017",
-                                                       "2017-01-01", "2017-12-31"))
-    tables.register_table("tlc_yellow_trips", DataTable("bigquery-public-data.new_york_taxi_trips.tlc_yellow_trips_2015",
-                                                        "2015-01-01", "2015-12-31"))
-    tables.register_table("tlc_yellow_trips", DataTable("bigquery-public-data.new_york_taxi_trips.tlc_yellow_trips_2016",
-                                                        "2016-01-01", "2016-12-31"))
-    tables.register_table("tlc_yellow_trips", DataTable("bigquery-public-data.new_york_taxi_trips.tlc_yellow_trips_2017",
-                                                        "2017-01-01", "2017-12-31"))
 
 
 def add(s1, s2):
@@ -60,7 +40,7 @@ def join_dataframes(df_list, key_col, merge=add):
 
 @handle_exceptions
 def total_trips_over_date_range(start_date, end_date):
-    f = SqlDateFilter(backend, tables)
+    f = SqlDateFilter(backend)
 
     date_col = "pickup_datetime"
     result_date = "date"
@@ -87,7 +67,7 @@ def total_trips_over_date_range(start_date, end_date):
 
 @handle_exceptions
 def average_fare_heatmap_of_date(date):
-    f = SqlDateFilter(backend, tables)
+    f = SqlDateFilter(backend)
 
     lat = "lat"
     lng = "lng"
@@ -118,7 +98,7 @@ def average_fare_heatmap_of_date(date):
 
 @handle_exceptions
 def average_speed_of_date(date):
-    f = SqlDateFilter(backend, tables)
+    f = SqlDateFilter(backend)
 
     result_dfs = list()
     date_col = "pickup_datetime"
@@ -129,7 +109,7 @@ def average_speed_of_date(date):
     if backend == SqlBackend.SQLITE:
         timediff_part = f"'{timediff_part}'"
 
-    for table_group in ["tlc_yellow_trips", "tlc_yellow_trips"]:
+    for table_group in ["tlc_green_trips", "tlc_yellow_trips"]:
         query = (
             f"SELECT AVG(trip_distance / DATETIME_DIFF(dropoff_datetime, pickup_datetime, {timediff_part}) * 3600) AS {avg_speed}, "
             f"COUNT({date_col}) AS {trip_count} "
