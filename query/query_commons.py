@@ -3,10 +3,10 @@ import json
 
 
 class QueryResponse:
-    def __init__(self, response, exceed_limit, empty_response):
+    def __init__(self, response, exceed_limit, is_empty):
         self.response = response
         self.exceed_limit = exceed_limit
-        self.empty_response = empty_response
+        self.is_empty = is_empty
 
 
 class HttpResponse:
@@ -30,9 +30,10 @@ class HttpResponse:
         self.status = status.value
 
 
-def df2json_dict(df):
-    return {"data": [{key: value for (key, value) in zip(df.columns, row)} for row in df.values], "status": "OK"}
+def df2json_list(df):
+    return [{key: value for (key, value) in zip(df.columns, row)} for row in df.values]
 
 
-def json2http(json_dict):
+def json2http_ok(json_list):
+    json_dict = {"data": json_list, "status": "OK"}
     return HttpResponse(json.dumps(json_dict), HttpResponse.ContentType.JSON, HttpResponse.Status.OK)
