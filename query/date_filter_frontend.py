@@ -136,7 +136,7 @@ class SqlDateFilter:
         elif date_start == date_end:
             return f"(date({date_col}) = '{date_start.strftime(supported_date_format)}')"
         else:
-            return f"(date({date_col}) >= '{date_start.strftime(supported_date_format)}'" \
+            return f"(date({date_col}) >= '{date_start.strftime(supported_date_format)}' " \
                 f"AND date({date_col}) <= '{date_end.strftime(supported_date_format)}')"
 
     def get_table_groups(self, query, date_start, date_end):
