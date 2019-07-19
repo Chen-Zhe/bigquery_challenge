@@ -24,6 +24,13 @@ def average_fare_heatmap():
     return Response(response=r.content, content_type=r.content_type, status=r.status)
 
 
+@app.route('/average_speed_24hrs')
+def average_speed_24hrs():
+    date = request.args.get("date", None)
+    r = average_speed_of_date(date)
+    return Response(response=r.content, content_type=r.content_type, status=r.status)
+
+
 if __name__ == '__main__':
     app.debug = True
     app.run()
