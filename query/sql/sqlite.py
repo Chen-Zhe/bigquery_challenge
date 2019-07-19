@@ -3,6 +3,7 @@ import pandas as pd
 from query.query_commons import QueryResponse
 import logging
 import dateutil.parser
+from query.sql.tables.sqlite import tables
 
 logger = logging.getLogger(__name__)
 
@@ -31,8 +32,7 @@ class Sqlite3Backend:
     """
     Python SQLite 3 Backend
     """
-
-    datetime_diff = ""
+    tables = tables
 
     def __init__(self, db_path="sample_data/nyc_taxi_sample_data.db"):
         self.conn = sqlite3.connect(db_path)

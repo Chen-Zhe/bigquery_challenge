@@ -1,5 +1,6 @@
 from google.cloud.bigquery import Client
 from query.query_commons import QueryResponse
+from query.sql.tables.google_bigquery import tables
 import logging
 
 logger = logging.getLogger(__name__)
@@ -9,6 +10,8 @@ class BigQueryBackend:
     """
     Google BigQuery Backend
     """
+    tables = tables
+
     def __init__(self, service_account_cred="../gojek-challenge-180b1791e462.json"):
         self.client = Client.from_service_account_json(service_account_cred)
 
