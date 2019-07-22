@@ -27,3 +27,7 @@ class RedisCache:
             return list()
 
         return self.r.get(keys)
+
+    def set(self, key, value):
+        if self.alive:
+            self.r.set(key, value)

@@ -1,5 +1,5 @@
 from query.sql.backend_factory import get_sql_backend
-from query.types.date.utils import supported_date_format, validate_date_string
+from query.types.date.utils import DateFormat as D
 from cache.strategy.date_range import DateRangeCache
 from errors import *
 from datetime import datetime
@@ -27,13 +27,13 @@ class SqlDateFilter:
         elif not end_date:
             # if only start date is specified, query from start date to today
             return self.valid_date_range_query(query, date_col,
-                                               validate_date_string(start_date), datetime.now().date())
+                                               D.validate_date_string(start_date), datetime.now().date())
         elif not start_date:
             # if only end date is specified, query for the single day
-            return self.valid_date_range_query(query, date_col, validate_date_string(end_date))
+            return self.valid_date_range_query(query, date_col, D.validate_date_string(end_date))
         else:
-            date_start = validate_date_string(start_date)
-            date_end = validate_date_string(end_date)
+            date_start = D.validate_date_string(start_date)
+            date_end = D.validate_date_string(end_date)
             return self.valid_date_range_query(query, date_col, date_start, date_end)
 
     def date_query(self, query, date_col, date):
@@ -42,7 +42,7 @@ class SqlDateFilter:
             return self.valid_date_range_query(query, date_col, datetime.now().date())
         else:
             # if only start date is specified, query from start date to today
-            return self.valid_date_range_query(query, date_col, validate_date_string(date))
+            return self.valid_date_range_query(query, date_col, D.validate_date_string(date))
 
     def valid_date_range_query(self, query, date_col, date_start, date_end=None):
         if query.find(self.condition_placeholder) == -1:
@@ -51,10 +51,17 @@ class SqlDateFilter:
         if query.find(self.table_name_prefix) == -1:
             raise QueryGenerationException("Incorrect query configuration: table names cannot be inserted")
 
-        if date_end is None:
-            date_end = date_start
+        if date_start > date_end:
+            raise RequestException(f"start date {D.to_string(date_start)} must be earlier than end date {D.to_string(date_end)}")
 
         self.cache.set_curr_query(query)
+
+        if date_end is None:
+            date_end = date_start
+            if self.cache.is_date_cached(date_start):
+
+
+
         uncached_dates_condition = self.gen_sql_date_range_condition(date_col, date_start, date_end)
 
         if uncached_dates_condition:
@@ -74,16 +81,11 @@ class SqlDateFilter:
                 # this query won't return anything due to no relevant table. Execute empty query
                 return self.backend.query()
         else:
-            return self.cache.merge_content(None, date_col)
+            return self.cache.merge_response(None, date_col)
 
     def gen_sql_date_range_condition(self, date_col, date_start, date_end):
-        start_date_str = date_start.strftime(supported_date_format)
-        end_date_str = date_end.strftime(supported_date_format)
-
-        if date_start > date_end:
-            raise RequestException(f"start date {start_date_str} must be earlier than end date {end_date_str}")
-
-
+        start_date_str = D.to_string(date_start)
+        end_date_str = D.to_string(date_end)
 
         if date_start == date_end:
             return f"(date({date_col})='{start_date_str}')"
