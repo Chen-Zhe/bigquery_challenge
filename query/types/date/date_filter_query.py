@@ -1,5 +1,6 @@
 from query.sql.backend_factory import get_sql_backend
-from query.types.date.utils import *
+from query.types.date.utils import supported_date_format, validate_date_string
+from cache.strategy.date_range import DateRangeCache
 from errors import *
 from datetime import datetime
 import re
@@ -17,6 +18,7 @@ class SqlDateFilter:
     def __init__(self, backend_name):
         self.backend = get_sql_backend(backend_name)
         self.tables = self.backend.tables
+        self.cache = DateRangeCache()
 
     def date_range_query(self, query, date_col, start_date, end_date):
         if not start_date and not end_date:
@@ -52,31 +54,41 @@ class SqlDateFilter:
         if date_end is None:
             date_end = date_start
 
-        query = query.replace(self.condition_placeholder,
-                              self.gen_sql_date_range_condition(date_col, date_start, date_end))
+        self.cache.set_curr_query(query)
+        uncached_dates_condition = self.gen_sql_date_range_condition(date_col, date_start, date_end)
 
-        tables = self.get_table_groups(query, date_start, date_end)
+        if uncached_dates_condition:
+            query = query.replace(self.condition_placeholder,
+                                  )
 
-        if tables:
-            for group_name, table_list in tables.items():
-                query = query.replace(self.table_name.format(group_name),
-                                      self.tables.gen_sql_query_tables(group_name, table_list))
+            tables = self.get_table_groups(query, date_start, date_end)
 
-            # print(query)
-            return self.backend.query(query)
+            if tables:
+                for group_name, table_list in tables.items():
+                    query = query.replace(self.table_name.format(group_name),
+                                          self.tables.gen_sql_query_tables(group_name, table_list))
+
+                # print(query)
+                return self.backend.query(query)
+            else:
+                # this query won't return anything due to no relevant table. Execute empty query
+                return self.backend.query()
         else:
-            # this query won't return anything due to no relevant table. Execute empty query
-            return self.backend.query()
+            return self.cache.merge_content(None, date_col)
 
-    @staticmethod
-    def gen_sql_date_range_condition(date_col, date_start, date_end):
+    def gen_sql_date_range_condition(self, date_col, date_start, date_end):
+        start_date_str = date_start.strftime(supported_date_format)
+        end_date_str = date_end.strftime(supported_date_format)
+
         if date_start > date_end:
-            raise RequestException("start date must be earlier than end date")
-        elif date_start == date_end:
-            return f"(date({date_col}) = '{date_start.strftime(supported_date_format)}')"
+            raise RequestException(f"start date {start_date_str} must be earlier than end date {end_date_str}")
+
+
+
+        if date_start == date_end:
+            return f"(date({date_col})='{start_date_str}')"
         else:
-            return f"(date({date_col}) >= '{date_start.strftime(supported_date_format)}' " \
-                f"AND date({date_col}) <= '{date_end.strftime(supported_date_format)}')"
+            return f"(date({date_col})>='{start_date_str}' AND date({date_col})<='{end_date_str}')"
 
     def get_table_groups(self, query, date_start, date_end):
         matched_table_names = re.findall(self.table_name_regex.format(r"\S+"), query)
