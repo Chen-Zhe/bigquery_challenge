@@ -13,21 +13,28 @@ class RedisCache:
             self.alive = self.r.ping()
         except:
             # ping would return True if connection is successful
-            # all other cases would be treated as the cache is not alive
+            # all other cases would be treated as if the cache is not alive
             self.alive = False
 
     def get(self, key):
         if not self.alive:
             return None
-
-        return self.r.get(key)
+        try:
+            return self.r.get(key)
+        except:
+            return None
 
     def get_multi(self, keys):
         if not self.alive:
             return list()
-
-        return self.r.mget(keys)
+        try:
+            return self.r.mget(keys)
+        except:
+            return None
 
     def set(self, key, value):
         if self.alive:
-            self.r.set(key, value)
+            try:
+                self.r.set(key, value)
+            except:
+                pass

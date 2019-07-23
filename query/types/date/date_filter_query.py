@@ -1,4 +1,5 @@
 from query.sql.backend_factory import get_sql_backend
+from cache.strategy.date_range import DateRangeCache
 from query.types.date.utils import DateFormat as D
 from errors import *
 from datetime import datetime
@@ -14,53 +15,58 @@ class SqlDateFilter:
     table_name = table_name_prefix + "({})"
     table_name_regex = table_name_prefix + r"\({}\)"
 
-    def __init__(self, backend_name):
+    def __init__(self, backend_name, query_name):
         self.backend = get_sql_backend(backend_name)
         self.tables = self.backend.tables
+        self.cache = DateRangeCache(query_name)
+        self.date_range_pairs = None
 
-    def date_range(self, start_date, end_date):
+    def set_date_range(self, start_date, end_date):
         if not start_date and not end_date:
             # if nothing is specified, query for today
-            return self.valid_date_range(datetime.now().date())
+            self.validate_date_range(datetime.now().date())
         elif not end_date:
             # if only start date is specified, query from start date to today
-            return self.valid_date_range(D.validate_date_string(start_date), datetime.now().date())
+            self.validate_date_range(D.validate_date_string(start_date), datetime.now().date())
         elif not start_date:
             # if only end date is specified, query for the single day
-            return self.valid_date_range(D.validate_date_string(end_date))
+            self.validate_date_range(D.validate_date_string(end_date))
         else:
             date_start = D.validate_date_string(start_date)
             date_end = D.validate_date_string(end_date)
-            return self.valid_date_range(date_start, date_end)
+            self.validate_date_range(date_start, date_end)
 
-    def date(self, date):
+    def set_date(self, date):
         if not date:
             # if nothing is specified, query for today
-            return datetime.now().date()
+            date = datetime.now().date()
         else:
             # if only start date is specified, query from start date to today
-            return D.validate_date_string(date)
+            date = D.validate_date_string(date)
 
-    @staticmethod
-    def valid_date_range(date_start, date_end=None):
+        if self.cache.is_date_cached(date):
+            self.date_range_pairs = list()
+        else:
+            self.date_range_pairs = [(date, date)]
+
+    def validate_date_range(self, date_start, date_end=None):
         if date_end is None:
             date_end = date_start
 
         if date_start > date_end:
             raise RequestException(f"start date {D.to_string(date_start)} must be earlier than end date {D.to_string(date_end)}")
 
-        return date_start, date_end
+        self.date_range_pairs = self.cache.determine_uncached_dates(date_start, date_end)
+        # self.date_range_pairs.sort()
 
-    def date_range_query(self, query, date_col, date_range_pairs):
-        for date_start, date_end in date_range_pairs:
-            if date_start > date_end:
-                raise RequestException(
-                    f"start date {D.to_string(date_start)} must be earlier than end date {D.to_string(date_end)}")
+    @property
+    def requires_query(self):
+        return bool(self.date_range_pairs)
 
-        date_range_pairs.sort()
-        return self.valid_date_range_query(query, date_col, date_range_pairs)
+    def query(self, query, date_col):
+        if not self.requires_query:
+            return self.backend.query()
 
-    def valid_date_range_query(self, query, date_col, date_range_pairs):
         if query.find(self.condition_placeholder) == -1:
             raise QueryGenerationException("Incorrect query configuration: date condition filter cannot be inserted")
 
@@ -68,10 +74,10 @@ class SqlDateFilter:
             raise QueryGenerationException("Incorrect query configuration: table names cannot be inserted")
 
         query = query.replace(self.condition_placeholder,
-                              self.gen_sql_date_range_condition(date_col, date_range_pairs))
+                              self.gen_sql_date_range_condition(date_col, self.date_range_pairs))
 
         # date range pairs should be mutually exclusive
-        tables = self.get_table_groups(query, date_range_pairs[0][0], date_range_pairs[-1][1])
+        tables = self.get_table_groups(query, self.date_range_pairs[0][0], self.date_range_pairs[-1][1])
 
         if tables:
             for group_name, table_list in tables.items():

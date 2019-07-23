@@ -1,6 +1,5 @@
 from cache.backend.redis import RedisCache
 from datetime import timedelta
-import heapq
 from query.types.date.utils import DateFormat as D
 from io import BytesIO
 import pyarrow.parquet as pq
@@ -17,17 +16,12 @@ class DateRangeCache:
     host = "localhost"
     port = 6379
     password = None
-    max_intervals = 3
 
-    def __init__(self):
+    def __init__(self, query_name):
         self.c = RedisCache(host=self.host, port=self.port, password=self.password)
-        self.curr_query = None
+        self.curr_query = query_name
         self.dates = None
         self.cached_content = None
-        self.valid_cache = False
-
-    def set_curr_query(self, query):
-        self.curr_query = query
 
     def gen_cache_key(self, date):
         return self.curr_query + str(date)
@@ -35,7 +29,6 @@ class DateRangeCache:
     def determine_uncached_dates(self, date_start, date_end):
         if not self.curr_query:
             # curr_query is the key to access cache. Without the key, cache is unusable
-            self.valid_cache = False
             return [(date_start, date_end)]
 
         self.dates = [date for date in inclusive_date_range(date_start, date_end)]
@@ -44,45 +37,38 @@ class DateRangeCache:
         cached_intervals = list()
 
         interval_start = None
-        for i in range(len(self.dates)):
+        for i in range(len(self.cached_content)):
             if self.cached_content[i] is not None:
                 if interval_start is None:
                     interval_start = (i, self.dates[i])
             else:
                 if interval_start is not None:
                     idx, date = interval_start
-                    heapq.heappush(cached_intervals, (idx - i + 1, date, self.dates[i-1]))
+                    cached_intervals.append((date, self.dates[i-1]))
                     interval_start = None
 
         if interval_start is not None:
             idx, date = interval_start
-            heapq.heappush(cached_intervals, (idx - len(self.dates), date, self.dates[-1]))
+            cached_intervals.append((date, self.dates[-1]))
 
         if cached_intervals:
-            longest_intervals = list()
-
-            # for i in range(self.max_intervals - 1):
-            #     _, start, end = heapq.heappop(cached_intervals)
-            for _, start, end in cached_intervals:
-                longest_intervals.append((start, end))
-
-            longest_intervals.sort()
-            uncached_intervals = list()
+            cached_intervals.sort()
             one_day = timedelta(days=1)
 
-            if date_start != longest_intervals[0][0]:
-                uncached_intervals.append((date_start, longest_intervals[0][0] - one_day))
-            if date_end != longest_intervals[-1][1]:
-                uncached_intervals.append((longest_intervals[-1][1] + one_day, date_end))
+            uncached_intervals = list()
 
-            for i in range(0, len(longest_intervals)-1):
-                uncached_intervals.append((longest_intervals[i][1] + one_day, longest_intervals[i+1][0] - one_day))
+            if date_start != cached_intervals[0][0]:
+                uncached_intervals.append((date_start, cached_intervals[0][0] - one_day))
 
-            self.valid_cache = True
+            for i in range(0, len(cached_intervals)-1):
+                uncached_intervals.append((cached_intervals[i][1] + one_day, cached_intervals[i+1][0] - one_day))
+
+            if date_end != cached_intervals[-1][1]:
+                uncached_intervals.append((cached_intervals[-1][1] + one_day, date_end))
+
             return uncached_intervals
 
         else:
-            self.valid_cache = False
             return [(date_start, date_end)]
 
     def is_date_cached(self, date):
@@ -90,21 +76,20 @@ class DateRangeCache:
         self.dates = date
 
         if self.cached_content is not None:
-            self.valid_cache = True
             return True
         else:
-            self.valid_cache = False
             return False
 
     def merge_multi_day_df(self, df, date_col):
         valid_dfs = list()
-        uncached_dates = set()
+        uncached_dates = set(self.dates)
 
         for date, cache in zip(self.dates, self.cached_content):
-            if cache is None:
-                uncached_dates.add(date)
-            elif len(cache) != 0:
-                valid_dfs.append(pq.read_table(BytesIO(cache)).to_pandas())
+            if cache is not None:
+                uncached_dates.remove(date)
+
+                if len(cache) != 0:
+                    valid_dfs.append(pq.read_table(BytesIO(cache)).to_pandas())
 
         if df is not None:
             valid_dfs.append(df)
