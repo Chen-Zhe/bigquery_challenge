@@ -1,11 +1,13 @@
 from query.types.date.date_filter_query import SqlDateFilter
-from errors import *
-import numpy as np
-import pandas as pd
 from query.query_commons import df2json_list, json2http_ok
 from query.sql.backend_factory import SqlBackend
+from errors import *
+from conf import SqlBackendConfig
 
-backend = SqlBackend.SQLITE
+import numpy as np
+import pandas as pd
+
+backend = SqlBackendConfig.backend
 
 
 def add_func(s1, s2):

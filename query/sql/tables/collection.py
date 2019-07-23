@@ -1,7 +1,9 @@
-import logging
-
 from errors import ServerException
 from query.types.date.utils import DateFormat as D
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class DataTable:
@@ -20,11 +22,11 @@ class SqlTableCollection:
 
     def register_table(self, group_name, data_table):
         if group_name not in self.tables:
-            logging.error(f"group {group_name} does not exist in this table collection")
+            logger.error(f"group '{group_name}' does not exist in this table collection")
             return
 
         if data_table.date_range_start > data_table.date_range_end:
-            logging.error(f"sql table {data_table.sql_name} has an invalid date range")
+            logger.error(f"sql table '{data_table.sql_name}' has an invalid date range")
             return
 
         self.tables[group_name].append(data_table)
@@ -34,7 +36,7 @@ class SqlTableCollection:
         relevant_tables = list()
 
         if group_name not in self.tables:
-            logging.error(f"group {group_name} does not exist in this table collection")
+            logger.error(f"group {group_name} does not exist in this table collection")
             return relevant_tables
 
         registered_tables = self.tables[group_name]

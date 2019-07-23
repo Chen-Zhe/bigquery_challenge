@@ -30,13 +30,13 @@ def handle_exceptions(f):
             error_msg["status"] = f"Error - Request: {str(e)}"
             return HttpResponse(json.dumps(error_msg), HttpResponse.ContentType.JSON, HttpResponse.Status.BAD_REQUEST)
         
-        except ServerException:
-            logger.exception("Server Exception Occurred")
+        except ServerException as e:
+            logger.exception(f"Server Exception Occurred due to {str(e)}")
             error_msg["status"] = "Error - Server"
             return HttpResponse(json.dumps(error_msg), HttpResponse.ContentType.JSON, HttpResponse.Status.INTERNAL_SERVER_ERROR)
 
-        except Exception:
-            logger.exception("Internal Server Error Occurred")
+        except Exception as e:
+            logger.exception(f"Internal Server Error Occurred due to {str(e)}")
             error_msg["status"] = "Error - Server"
             return HttpResponse(json.dumps(error_msg), HttpResponse.ContentType.JSON, HttpResponse.Status.INTERNAL_SERVER_ERROR)
 

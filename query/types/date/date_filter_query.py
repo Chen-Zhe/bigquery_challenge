@@ -4,9 +4,6 @@ from query.types.date.utils import DateFormat as D
 from errors import *
 from datetime import datetime
 import re
-import logging
-
-logger = logging.getLogger(__name__)
 
 
 class SqlDateFilter:
@@ -117,9 +114,6 @@ class SqlDateFilter:
             relevant_group_tables = self.tables.get_tables(group_name, date_start, date_end)
 
             if not relevant_group_tables:
-                # raise RequestException(f"Requested table group '{group_name}' has no relevant table between "
-                #                                f"{date_start.strftime(supported_date_format)}"
-                #                                f" and {date_end.strftime(supported_date_format)}")
                 return dict()
 
             relevant_tables[group_name] = [table.sql_name for table in relevant_group_tables]

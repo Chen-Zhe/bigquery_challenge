@@ -1,6 +1,8 @@
 from cache.backend.redis import RedisCache
-from datetime import timedelta
 from query.types.date.utils import DateFormat as D
+from conf import DateRangeCacheConfig
+
+from datetime import timedelta
 from io import BytesIO
 import pyarrow.parquet as pq
 import pandas as pd
@@ -13,12 +15,10 @@ def inclusive_date_range(date_start, date_end):
 
 class DateRangeCache:
 
-    host = "localhost"
-    port = 6379
-    password = None
+    Conf = DateRangeCacheConfig
 
     def __init__(self, query_name):
-        self.c = RedisCache(host=self.host, port=self.port, password=self.password)
+        self.c = RedisCache(host=self.Conf.host, port=self.Conf.port, password=self.Conf.password)
         self.curr_query = query_name
         self.dates = None
         self.cached_content = None
