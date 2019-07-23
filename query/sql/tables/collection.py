@@ -1,14 +1,14 @@
 import logging
 
 from errors import ServerException
-from query.types.date.utils import validate_date_string
+from query.types.date.utils import DateFormat as D
 
 
 class DataTable:
     def __init__(self, sql_name, date_range_start_string, date_range_end_string):
         self.sql_name = sql_name
-        self.date_range_start = validate_date_string(date_range_start_string)
-        self.date_range_end = validate_date_string(date_range_end_string)
+        self.date_range_start = D.validate_date_string(date_range_start_string)
+        self.date_range_end = D.validate_date_string(date_range_end_string)
 
         if self.date_range_start > self.date_range_end:
             raise ServerException(f"Table '{sql_name}' has incorrectly-configured date range")
