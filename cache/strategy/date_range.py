@@ -27,7 +27,7 @@ class DateRangeCache:
         self.cached_content = None
 
     def set_curr_query(self, query):
-        self.curr_query = str(hash(query))
+        self.curr_query = query
 
     def gen_cache_key(self, date):
         return self.curr_query + str(date)

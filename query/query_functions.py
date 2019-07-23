@@ -3,8 +3,8 @@ from errors import *
 import numpy as np
 import pandas as pd
 from query.query_commons import df2json_list, json2http_ok
-from s2sphere import Cell, LatLng
 from query.sql.backend_factory import SqlBackend
+from cache.strategy.date_range import DateRangeCache
 
 backend = SqlBackend.SQLITE
 
@@ -13,9 +13,9 @@ def add(s1, s2):
     return np.nan_to_num(s1) + np.nan_to_num(s2)
 
 
-def calc_s2id(lat, lng, level):
-    s2id = Cell.from_lat_lng(LatLng(lat, lng)).id().parent(level).id()
-    return f"{s2id:016x}"
+def whoami():
+    import sys
+    return sys._getframe(1).f_code.co_name
 
 
 def join_dataframes(df_list, key_col, merge=add):
@@ -47,6 +47,9 @@ def total_trips_over_date_range(start_date, end_date):
 
     result_dfs = list()
 
+    cache = DateRangeCache()
+    cache.set_curr_query(whoami())
+
     for table_group in ["tlc_green_trips", "tlc_yellow_trips"]:
         query = (
             f"SELECT date({date_col}) AS {result_date}, COUNT({date_col}) AS total_trips FROM {f.table_name.format(table_group)} "
@@ -68,6 +71,12 @@ def total_trips_over_date_range(start_date, end_date):
 @handle_exceptions
 def average_fare_heatmap_of_date(date):
     f = SqlDateFilter(backend)
+
+    from s2sphere import Cell, LatLng
+
+    def calc_s2id(lat, lng, level):
+        s2id = Cell.from_lat_lng(LatLng(lat, lng)).id().parent(level).id()
+        return f"{s2id:016x}"
 
     lat = "lat"
     lng = "lng"
@@ -126,7 +135,6 @@ def average_speed_of_date(date):
         raise RequestException("Empty Result")
 
     all_avg_speed = pd.concat(result_dfs)
-    response = [
-        {avg_speed: (all_avg_speed[trip_count] / all_avg_speed[trip_count].sum() * all_avg_speed[avg_speed]).sum()}
-    ]
-    return json2http_ok(response)
+    response = pd.DataFrame(data={avg_speed: [(all_avg_speed[trip_count] / all_avg_speed[trip_count].sum() * all_avg_speed[avg_speed]).sum()]})
+
+    return json2http_ok(df2json_list(response))
