@@ -1,5 +1,4 @@
 from cache.backend.redis import RedisCache
-from query.query_commons import QueryResponse
 from datetime import timedelta
 import heapq
 from query.types.date.utils import DateFormat as D
@@ -25,6 +24,7 @@ class DateRangeCache:
         self.curr_query = None
         self.dates = None
         self.cached_content = None
+        self.valid_cache = False
 
     def set_curr_query(self, query):
         self.curr_query = query
@@ -35,6 +35,7 @@ class DateRangeCache:
     def determine_uncached_dates(self, date_start, date_end):
         if not self.curr_query:
             # curr_query is the key to access cache. Without the key, cache is unusable
+            self.valid_cache = False
             return [(date_start, date_end)]
 
         self.dates = [date for date in inclusive_date_range(date_start, date_end)]
@@ -77,9 +78,11 @@ class DateRangeCache:
             for i in range(0, len(longest_intervals)-1):
                 uncached_intervals.append((longest_intervals[i][1] + one_day, longest_intervals[i+1][0] - one_day))
 
+            self.valid_cache = True
             return uncached_intervals
 
         else:
+            self.valid_cache = False
             return [(date_start, date_end)]
 
     def is_date_cached(self, date):
@@ -87,27 +90,26 @@ class DateRangeCache:
         self.dates = date
 
         if self.cached_content is not None:
+            self.valid_cache = True
             return True
         else:
+            self.valid_cache = False
             return False
 
-    def merge_multi_day_response(self, query_response, date_col):
-        if not self.cached_content:
-            return query_response
-
+    def merge_multi_day_df(self, df, date_col):
         valid_dfs = list()
         uncached_dates = set()
 
         for date, cache in zip(self.dates, self.cached_content):
             if cache is None:
                 uncached_dates.add(date)
-            elif cache != "":
+            elif len(cache) != 0:
                 valid_dfs.append(pq.read_table(BytesIO(cache)).to_pandas())
 
-        if not query_response.is_empty:
-            valid_dfs.append(query_response.content)
+        if df is not None:
+            valid_dfs.append(df)
 
-            for date_str, group in query_response.content.groupby(date_col):
+            for date_str, group in df.groupby(date_col):
                 date = D.validate_date_string(date_str)
                 self.df_to_cache(date, group)
                 uncached_dates.remove(date)
@@ -116,28 +118,27 @@ class DateRangeCache:
         for date in uncached_dates:
             self.df_to_cache(date, None)
 
-        query_response.content = pd.concat(valid_dfs)
-        return query_response
+        return pd.concat(valid_dfs)
 
-    def merge_single_day_response(self, query_response):
+    def merge_single_day_df(self, df):
         if self.cached_content is not None:
             # the date is cached. return cached result
-            if self.cached_content == "":
-                return QueryResponse(None, False, True)
+            if len(self.cached_content) == 0:
+                return None
             else:
-                return QueryResponse(pq.read_table(BytesIO(self.cached_content)).to_pandas(), False, False)
+                return pq.read_table(BytesIO(self.cached_content)).to_pandas()
 
         else:
-            if query_response.is_empty:
+            if df is None:
                 self.df_to_cache(self.dates, None)
             else:
-                self.df_to_cache(self.dates, query_response.content)
-            return query_response
+                self.df_to_cache(self.dates, df)
+            return df
 
     def df_to_cache(self, date, df):
         if df is None:
             self.c.set(self.gen_cache_key(date), "")
         else:
             buffer = BytesIO()
-            df.content.to_parquet(buffer)
+            df.to_parquet(buffer)
             self.c.set(self.gen_cache_key(date), buffer.getvalue())

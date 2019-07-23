@@ -57,7 +57,8 @@ class SqlDateFilter:
                 raise RequestException(
                     f"start date {D.to_string(date_start)} must be earlier than end date {D.to_string(date_end)}")
 
-        return self.valid_date_range_query(query, date_col, date_range_pairs.sort())
+        date_range_pairs.sort()
+        return self.valid_date_range_query(query, date_col, date_range_pairs)
 
     def valid_date_range_query(self, query, date_col, date_range_pairs):
         if query.find(self.condition_placeholder) == -1:
@@ -77,7 +78,6 @@ class SqlDateFilter:
                 query = query.replace(self.table_name.format(group_name),
                                       self.tables.gen_sql_query_tables(group_name, table_list))
 
-            # print(query)
             return self.backend.query(query)
         else:
             # this query won't return anything due to no relevant table. Execute empty query

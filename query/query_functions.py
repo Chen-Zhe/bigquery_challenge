@@ -9,7 +9,7 @@ from cache.strategy.date_range import DateRangeCache
 backend = SqlBackend.SQLITE
 
 
-def add(s1, s2):
+def add_func(s1, s2):
     return np.nan_to_num(s1) + np.nan_to_num(s2)
 
 
@@ -18,7 +18,7 @@ def whoami():
     return sys._getframe(1).f_code.co_name
 
 
-def join_dataframes(df_list, key_col, merge=add):
+def join_dataframes(df_list, key_col, merge):
     if not df_list:
         raise ServerException("Attempting to merge an empty list of dataframe")
 
@@ -50,20 +50,29 @@ def total_trips_over_date_range(start_date, end_date):
     cache = DateRangeCache()
     cache.set_curr_query(whoami())
 
-    for table_group in ["tlc_green_trips", "tlc_yellow_trips"]:
-        query = (
-            f"SELECT date({date_col}) AS {result_date}, COUNT({date_col}) AS total_trips FROM {f.table_name.format(table_group)} "
-            f"WHERE {f.condition_placeholder} AND {date_col} IS NOT NULL "
-            f"GROUP BY date({date_col})")
-        result = f.date_range_query(query, date_col, start_date, end_date)
+    date_start, date_end = f.date_range(start_date, end_date)
+    uncached_date_ranges = cache.determine_uncached_dates(date_start, date_end)
 
-        if not result.is_empty:
-            result_dfs.append(result.response)
+    if uncached_date_ranges:
+        for table_group in ["tlc_green_trips", "tlc_yellow_trips"]:
+            query = (
+                f"SELECT date({date_col}) AS {result_date}, COUNT({date_col}) AS total_trips FROM {f.table_name.format(table_group)} "
+                f"WHERE {f.condition_placeholder} AND {date_col} IS NOT NULL "
+                f"GROUP BY date({date_col})")
+            result = f.date_range_query(query, date_col, uncached_date_ranges)
+
+            if not result.is_empty:
+                result_dfs.append(result.response)
 
     if not result_dfs:
-        raise RequestException("Empty Result")
+        query_result_df = None
+    else:
+        query_result_df = join_dataframes(result_dfs, result_date, add_func)
 
-    merged_result = join_dataframes(result_dfs, result_date)
+    merged_result = cache.merge_multi_day_df(query_result_df, result_date)
+
+    if merged_result is None:
+        raise RequestException("Empty Result")
 
     return json2http_ok(df2json_list(merged_result))
 
