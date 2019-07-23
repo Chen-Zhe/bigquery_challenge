@@ -1,4 +1,5 @@
 from flask import Flask, request, Response
+
 from query.query_functions import *
 
 app = Flask(__name__)
@@ -32,5 +33,6 @@ def average_speed_24hrs():
 
 
 if __name__ == '__main__':
-    app.debug = True
-    app.run()
+    from conf import DevServerConfig as Conf
+
+    app.run(host=Conf.host, port=Conf.port, debug=Conf.debug)

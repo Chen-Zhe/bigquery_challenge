@@ -1,9 +1,12 @@
-from cache.backend.redis import RedisCache
 from datetime import timedelta
-from query.types.date.utils import DateFormat as D
 from io import BytesIO
-import pyarrow.parquet as pq
+
 import pandas as pd
+import pyarrow.parquet as pq
+
+from cache.backend.redis import RedisCache
+from conf import DateRangeCacheConfig
+from query.types.date.utils import DateFormat as D
 
 
 def inclusive_date_range(date_start, date_end):
@@ -12,13 +15,10 @@ def inclusive_date_range(date_start, date_end):
 
 
 class DateRangeCache:
-
-    host = "localhost"
-    port = 6379
-    password = None
+    Conf = DateRangeCacheConfig
 
     def __init__(self, query_name):
-        self.c = RedisCache(host=self.host, port=self.port, password=self.password)
+        self.c = RedisCache(host=self.Conf.host, port=self.Conf.port, password=self.Conf.password)
         self.curr_query = query_name
         self.dates = None
         self.cached_content = None
@@ -44,7 +44,7 @@ class DateRangeCache:
             else:
                 if interval_start is not None:
                     idx, date = interval_start
-                    cached_intervals.append((date, self.dates[i-1]))
+                    cached_intervals.append((date, self.dates[i - 1]))
                     interval_start = None
 
         if interval_start is not None:
@@ -60,8 +60,8 @@ class DateRangeCache:
             if date_start != cached_intervals[0][0]:
                 uncached_intervals.append((date_start, cached_intervals[0][0] - one_day))
 
-            for i in range(0, len(cached_intervals)-1):
-                uncached_intervals.append((cached_intervals[i][1] + one_day, cached_intervals[i+1][0] - one_day))
+            for i in range(0, len(cached_intervals) - 1):
+                uncached_intervals.append((cached_intervals[i][1] + one_day, cached_intervals[i + 1][0] - one_day))
 
             if date_end != cached_intervals[-1][1]:
                 uncached_intervals.append((cached_intervals[-1][1] + one_day, date_end))

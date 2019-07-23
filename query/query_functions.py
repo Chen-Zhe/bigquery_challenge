@@ -1,11 +1,13 @@
-from query.types.date.date_filter_query import SqlDateFilter
-from errors import *
 import numpy as np
 import pandas as pd
+
+from conf import SqlBackendConfig
+from errors import *
 from query.query_commons import df2json_list, json2http_ok
 from query.sql.backend_factory import SqlBackend
+from query.types.date.date_filter_query import SqlDateFilter
 
-backend = SqlBackend.SQLITE
+backend = SqlBackendConfig.backend
 
 
 def add_func(s1, s2):
@@ -50,7 +52,8 @@ def total_trips_over_date_range(start_date, end_date):
     if f.requires_query:
         for table_group in ["tlc_green_trips", "tlc_yellow_trips"]:
             query = (
-                f"SELECT date({date_col}) AS {result_date}, COUNT({date_col}) AS total_trips FROM {f.table_name.format(table_group)} "
+                f"SELECT date({date_col}) AS {result_date}, COUNT({date_col}) AS total_trips "
+                f"FROM {f.table_name.format(table_group)} "
                 f"WHERE {f.condition_placeholder} AND {date_col} IS NOT NULL "
                 f"GROUP BY date({date_col})")
             result = f.query(query, date_col)
@@ -92,7 +95,8 @@ def average_fare_heatmap_of_date(date):
     if f.requires_query:
         for table_group in ["tlc_green_trips", "tlc_yellow_trips"]:
             query = (
-                f"SELECT pickup_latitude AS {lat}, pickup_longitude AS {lng}, {fare_amount} FROM {f.table_name.format(table_group)} "
+                f"SELECT pickup_latitude AS {lat}, pickup_longitude AS {lng}, {fare_amount} "
+                f"FROM {f.table_name.format(table_group)} "
                 f"WHERE {f.condition_placeholder} "
                 f"AND pickup_latitude IS NOT NULL AND pickup_longitude IS NOT NULL AND {fare_amount} IS NOT NULL")
             result = f.query(query, date_col)
@@ -112,7 +116,7 @@ def average_fare_heatmap_of_date(date):
         raise RequestException("Empty Result")
 
     return json2http_ok(df2json_list(merged_result))
-    
+
 
 @handle_exceptions
 def average_speed_of_date(date):
@@ -146,7 +150,8 @@ def average_speed_of_date(date):
         query_result_df = None
     else:
         all_avg_speed = pd.concat(result_dfs)
-        query_result_df = pd.DataFrame(data={avg_speed: [(all_avg_speed[trip_count] / all_avg_speed[trip_count].sum() * all_avg_speed[avg_speed]).sum()]})
+        query_result_df = pd.DataFrame(data={avg_speed: [
+            (all_avg_speed[trip_count] / all_avg_speed[trip_count].sum() * all_avg_speed[avg_speed]).sum()]})
 
     merged_result = f.cache.merge_single_day_df(query_result_df)
     if merged_result is None:

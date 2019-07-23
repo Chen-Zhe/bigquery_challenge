@@ -1,12 +1,10 @@
-from query.sql.backend_factory import get_sql_backend
-from cache.strategy.date_range import DateRangeCache
-from query.types.date.utils import DateFormat as D
-from errors import *
-from datetime import datetime
 import re
-import logging
+from datetime import datetime
 
-logger = logging.getLogger(__name__)
+from cache.strategy.date_range import DateRangeCache
+from errors import *
+from query.sql.backend_factory import get_sql_backend
+from query.types.date.utils import DateFormat as D
 
 
 class SqlDateFilter:
@@ -54,7 +52,8 @@ class SqlDateFilter:
             date_end = date_start
 
         if date_start > date_end:
-            raise RequestException(f"start date {D.to_string(date_start)} must be earlier than end date {D.to_string(date_end)}")
+            raise RequestException(
+                f"start date {D.to_string(date_start)} must be earlier than end date {D.to_string(date_end)}")
 
         self.date_range_pairs = self.cache.determine_uncached_dates(date_start, date_end)
         # self.date_range_pairs.sort()
@@ -117,9 +116,6 @@ class SqlDateFilter:
             relevant_group_tables = self.tables.get_tables(group_name, date_start, date_end)
 
             if not relevant_group_tables:
-                # raise RequestException(f"Requested table group '{group_name}' has no relevant table between "
-                #                                f"{date_start.strftime(supported_date_format)}"
-                #                                f" and {date_end.strftime(supported_date_format)}")
                 return dict()
 
             relevant_tables[group_name] = [table.sql_name for table in relevant_group_tables]

@@ -1,5 +1,5 @@
-from enum import Enum
 import json
+from enum import Enum
 
 
 class QueryResponse:
@@ -31,7 +31,7 @@ class HttpResponse:
 
 
 def df2json_list(df):
-    return [{key: value for (key, value) in zip(df.columns, row)} for row in df.values]
+    return df.to_dict(orient="records")
 
 
 def json2http_ok(json_list):

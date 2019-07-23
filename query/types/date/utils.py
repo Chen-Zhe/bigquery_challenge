@@ -1,9 +1,11 @@
 from datetime import datetime
+
+from conf import DataFormatConfig
 from errors import RequestException
 
 
 class DateFormat:
-    supported_date_format = "%Y-%m-%d"
+    supported_date_format = DataFormatConfig.supported_date_format
 
     @staticmethod
     def validate_date_string(date_string):

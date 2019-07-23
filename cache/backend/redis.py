@@ -6,6 +6,7 @@ class RedisCache:
     Redis Cache interface
     It is designed as an optional component, such that losing connecting to Redis would not result in server error
     """
+
     def __init__(self, *args, **kwargs):
         self.r = Redis(*args, **kwargs)
 

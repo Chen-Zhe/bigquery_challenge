@@ -1,8 +1,11 @@
-import sqlite3
-import pandas as pd
-from query.query_commons import QueryResponse
 import logging
+import sqlite3
+
 import dateutil.parser
+import pandas as pd
+
+from conf import SqliteConfig
+from query.query_commons import QueryResponse
 from query.sql.tables.sqlite import tables
 
 logger = logging.getLogger(__name__)
@@ -34,18 +37,18 @@ class Sqlite3Backend:
     """
     tables = tables
 
-    def __init__(self, db_path="sample_data/nyc_taxi_sample_data.db"):
+    def __init__(self, db_path=SqliteConfig.database_file):
         self.conn = sqlite3.connect(db_path)
         self.conn.row_factory = sqlite3.Row
         self.cursor = self.conn.cursor()
 
         self.conn.create_function("DATETIME_DIFF", 3, _datetime_diff)
 
-    def query(self, sql_string="", limit=10000):
+    def query(self, sql_string="", limit=SqliteConfig.default_query_limit):
         if not sql_string:
             return QueryResponse(None, exceed_limit=False, is_empty=True)
 
-        query_job = self.cursor.execute(f"{sql_string} LIMIT {limit+1}")
+        query_job = self.cursor.execute(f"{sql_string} LIMIT {limit + 1}")
         query_result = query_job.fetchall()
 
         total_rows = len(query_result)
