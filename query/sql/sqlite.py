@@ -1,12 +1,12 @@
-from query.sql.tables.sqlite import tables
-from query.query_commons import QueryResponse
-from conf import SqliteConfig
-
-import sqlite3
-import pandas as pd
 import logging
-import dateutil.parser
+import sqlite3
 
+import dateutil.parser
+import pandas as pd
+
+from conf import SqliteConfig
+from query.query_commons import QueryResponse
+from query.sql.tables.sqlite import tables
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ class Sqlite3Backend:
         if not sql_string:
             return QueryResponse(None, exceed_limit=False, is_empty=True)
 
-        query_job = self.cursor.execute(f"{sql_string} LIMIT {limit+1}")
+        query_job = self.cursor.execute(f"{sql_string} LIMIT {limit + 1}")
         query_result = query_job.fetchall()
 
         total_rows = len(query_result)

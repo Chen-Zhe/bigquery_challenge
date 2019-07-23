@@ -1,9 +1,10 @@
-from query.sql.backend_factory import get_sql_backend
-from cache.strategy.date_range import DateRangeCache
-from query.types.date.utils import DateFormat as D
-from errors import *
-from datetime import datetime
 import re
+from datetime import datetime
+
+from cache.strategy.date_range import DateRangeCache
+from errors import *
+from query.sql.backend_factory import get_sql_backend
+from query.types.date.utils import DateFormat as D
 
 
 class SqlDateFilter:
@@ -51,7 +52,8 @@ class SqlDateFilter:
             date_end = date_start
 
         if date_start > date_end:
-            raise RequestException(f"start date {D.to_string(date_start)} must be earlier than end date {D.to_string(date_end)}")
+            raise RequestException(
+                f"start date {D.to_string(date_start)} must be earlier than end date {D.to_string(date_end)}")
 
         self.date_range_pairs = self.cache.determine_uncached_dates(date_start, date_end)
         # self.date_range_pairs.sort()

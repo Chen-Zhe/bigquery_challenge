@@ -1,7 +1,7 @@
+from datetime import datetime
+
 from conf import DataFormatConfig
 from errors import RequestException
-
-from datetime import datetime
 
 
 class DateFormat:

@@ -1,9 +1,10 @@
+import logging
+
 from google.cloud.bigquery import Client
+
+from conf import BigQueryConfig
 from query.query_commons import QueryResponse
 from query.sql.tables.google_bigquery import tables
-from conf import BigQueryConfig
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ class BigQueryBackend:
         if not sql_string:
             return QueryResponse(None, exceed_limit=False, is_empty=True)
 
-        query_job = self.client.query(f"{sql_string} LIMIT {limit+1}")
+        query_job = self.client.query(f"{sql_string} LIMIT {limit + 1}")
         query_result = query_job.result()
         total_rows = query_result.total_rows
         if total_rows == 0:

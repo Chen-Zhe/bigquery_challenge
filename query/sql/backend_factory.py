@@ -1,5 +1,6 @@
-from errors import ServerException
 from enum import Enum, auto
+
+from errors import ServerException
 
 
 class SqlBackend(Enum):

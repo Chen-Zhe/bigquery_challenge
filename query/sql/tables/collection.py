@@ -1,7 +1,7 @@
+import logging
+
 from errors import ServerException
 from query.types.date.utils import DateFormat as D
-
-import logging
 
 logger = logging.getLogger(__name__)
 

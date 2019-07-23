@@ -1,6 +1,5 @@
 from query.sql.tables.collection import DataTable, SqlTableCollection
 
-
 tables = SqlTableCollection(["tlc_green_trips", "tlc_yellow_trips"])
 
 tables.register_table("tlc_green_trips", DataTable("bigquery-public-data.new_york_taxi_trips.tlc_green_trips_2014",
