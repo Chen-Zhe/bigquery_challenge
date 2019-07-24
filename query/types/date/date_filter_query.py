@@ -16,7 +16,7 @@ class SqlDateFilter:
     def __init__(self, backend_name, query_name):
         self.backend = get_sql_backend(backend_name)
         self.tables = self.backend.tables
-        self.cache = DateRangeCache(query_name)
+        self.cache = DateRangeCache(query_name + str(backend_name))
         self.date_range_pairs = None
 
     def set_date_range(self, start_date, end_date):

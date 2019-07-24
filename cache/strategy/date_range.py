@@ -94,8 +94,10 @@ class DateRangeCache:
         if df is not None:
             valid_dfs.append(df)
 
-            for date_str, group in df.groupby(date_col):
-                date = D.validate_date_string(date_str)
+            for date, group in df.groupby(date_col):
+                if isinstance(date, str):
+                    date = D.validate_date_string(date)
+
                 self.df_to_cache(date, group)
                 uncached_dates.remove(date)
 

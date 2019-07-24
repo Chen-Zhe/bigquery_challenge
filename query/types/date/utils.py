@@ -1,7 +1,10 @@
 from datetime import datetime
+import logging
 
 from conf import DataFormatConfig
 from errors import RequestException
+
+logger = logging.getLogger(__name__)
 
 
 class DateFormat:
@@ -19,7 +22,8 @@ class DateFormat:
             return datetime.strptime(date_string, DateFormat.supported_date_format).date()
         except ValueError as e:
             raise RequestException(f"Incorrect date format in {date_string} resulting in {str(e)}")
-        except Exception:
+        except Exception as e:
+            logger.exception(f"Error occurred when parsing date string: {str(e)}")
             raise RequestException("Invalid date string")
 
     @staticmethod

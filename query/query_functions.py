@@ -140,6 +140,7 @@ def average_speed_of_date(date):
                 f"FROM {f.table_name.format(table_group)} "
                 f"WHERE {f.condition_placeholder} "
                 f"AND dropoff_datetime IS NOT NULL AND pickup_datetime IS NOT NULL AND trip_distance IS NOT NULL "
+                f"AND dropoff_datetime != pickup_datetime "
                 f"GROUP BY date({date_col})")
             result = f.query(query, date_col)
 
