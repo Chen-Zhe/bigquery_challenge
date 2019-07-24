@@ -62,4 +62,4 @@ class Sqlite3Backend:
             if exceed_limit:
                 logger.warning(f"Query limit of {limit} is reached in query: {sql_string}")
 
-            return QueryResponse(pd.DataFrame(data=data, columns=columns), total_rows > limit, False)
+        return QueryResponse(pd.DataFrame(data=data, columns=columns), total_rows > limit, False)

@@ -14,5 +14,6 @@ tables.register_table("tlc_yellow_trips", DataTable("bigquery-public-data.new_yo
                                                     "2015-01-01", "2015-12-31"))
 tables.register_table("tlc_yellow_trips", DataTable("bigquery-public-data.new_york_taxi_trips.tlc_yellow_trips_2016",
                                                     "2016-01-01", "2016-12-31"))
-tables.register_table("tlc_yellow_trips", DataTable("bigquery-public-data.new_york_taxi_trips.tlc_yellow_trips_2017",
-                                                    "2017-01-01", "2017-12-31"))
+# tlc_yellow_trips_2017 seems to contain a lot of INVALID cells, thus we'll not use it
+# tables.register_table("tlc_yellow_trips", DataTable("bigquery-public-data.new_york_taxi_trips.tlc_yellow_trips_2017",
+#                                                     "2017-01-01", "2017-12-31"))

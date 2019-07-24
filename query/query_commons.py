@@ -34,6 +34,10 @@ def df2json_list(df):
     return df.to_dict(orient="records")
 
 
-def json2http_ok(json_list):
-    json_dict = {"data": json_list, "status": "OK"}
+def json2http(json_list, partial=False):
+    if partial:
+        status = "Partial Result"
+    else:
+        status = "OK"
+    json_dict = {"data": json_list, "status": status}
     return HttpResponse(json.dumps(json_dict), HttpResponse.ContentType.JSON, HttpResponse.Status.OK)

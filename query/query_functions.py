@@ -3,7 +3,7 @@ import pandas as pd
 
 from conf import SqlBackendConfig
 from errors import *
-from query.query_commons import df2json_list, json2http_ok
+from query.query_commons import df2json_list, json2http
 from query.sql.backend_factory import SqlBackend
 from query.types.date.date_filter_query import SqlDateFilter
 
@@ -41,18 +41,22 @@ def join_dataframes(df_list, key_col, merge):
 
 @handle_exceptions
 def total_trips_over_date_range(start_date, end_date):
+    from query.table_schema import YellowGreenCommonFields as CF, ResultCommonFields as RCF
+
+    class TF:
+        total_trips = "total_trips"
+
     f = SqlDateFilter(backend, whoami())
     f.set_date_range(start_date, end_date)
 
-    date_col = "pickup_datetime"
-    result_date = "date"
-
+    date_col = CF.pickup_datetime
     result_dfs = list()
+    partial_result = False
 
     if f.requires_query:
         for table_group in ["tlc_green_trips", "tlc_yellow_trips"]:
             query = (
-                f"SELECT date({date_col}) AS {result_date}, COUNT({date_col}) AS total_trips "
+                f"SELECT date({date_col}) AS {RCF.date}, COUNT({date_col}) AS {TF.total_trips} "
                 f"FROM {f.table_name.format(table_group)} "
                 f"WHERE {f.condition_placeholder} AND {date_col} IS NOT NULL "
                 f"GROUP BY date({date_col})")
@@ -61,100 +65,119 @@ def total_trips_over_date_range(start_date, end_date):
             if not result.is_empty:
                 result_dfs.append(result.response)
 
+            partial_result = partial_result or result.exceed_limit
+
     if not result_dfs:
         query_result_df = None
     else:
-        query_result_df = join_dataframes(result_dfs, result_date, add_func)
+        query_result_df = join_dataframes(result_dfs, RCF.date, add_func)
 
-    merged_result = f.cache.merge_multi_day_df(query_result_df, result_date)
+    merged_result = f.cache.merge_multi_day_df(query_result_df, RCF.date)
 
     if merged_result is None:
         raise RequestException("Empty Result")
 
-    return json2http_ok(df2json_list(merged_result))
+    return json2http(df2json_list(merged_result), partial_result)
 
 
 @handle_exceptions
 def average_fare_heatmap_of_date(date):
-    f = SqlDateFilter(backend, whoami())
-    f.set_date(date)
-
+    # TODO: Use C++ library with Python wrapper from s2geometry instead
     from s2sphere import Cell, LatLng
+    from query.table_schema import YellowGreenCommonFields as CF
+
+    class TF:
+        lat = "lat"
+        lng = "lng"
+        s2id = "s2id"
 
     def calc_s2id(lat, lng, level):
         s2id = Cell.from_lat_lng(LatLng(lat, lng)).id().parent(level).id()
         return f"{s2id:016x}"
 
-    lat = "lat"
-    lng = "lng"
-    fare_amount = "fare_amount"
-    date_col = "pickup_datetime"
-    s2id = "s2id"
+    f = SqlDateFilter(backend, whoami())
+    f.set_date(date)
+
+    date_col = CF.pickup_datetime
+
     result_dfs = list()
+    partial_result = False
 
     if f.requires_query:
         for table_group in ["tlc_green_trips", "tlc_yellow_trips"]:
             query = (
-                f"SELECT pickup_latitude AS {lat}, pickup_longitude AS {lng}, {fare_amount} "
+                f"SELECT {CF.pickup_latitude} AS {TF.lat}, {CF.pickup_longitude} AS {TF.lng}, {CF.fare_amount} "
                 f"FROM {f.table_name.format(table_group)} "
                 f"WHERE {f.condition_placeholder} "
-                f"AND pickup_latitude IS NOT NULL AND pickup_longitude IS NOT NULL AND {fare_amount} IS NOT NULL")
+                f"AND {CF.pickup_latitude} IS NOT NULL AND {CF.pickup_longitude} IS NOT NULL "
+                f"AND {CF.fare_amount} IS NOT NULL")
             result = f.query(query, date_col)
 
             if not result.is_empty:
                 result_dfs.append(result.response)
 
+            partial_result = partial_result or result.exceed_limit
+
     if not result_dfs:
         query_result_df = None
     else:
         all_trips = pd.concat(result_dfs)
-        all_trips[s2id] = all_trips.apply(lambda x: calc_s2id(x[lat], x[lng], 16)[:9], axis=1)
-        query_result_df = all_trips.groupby(s2id, as_index=False).agg({fare_amount: "mean"})
+        all_trips[TF.s2id] = all_trips.apply(lambda x: calc_s2id(x[TF.lat], x[TF.lng], 16)[:9], axis=1)
+        query_result_df = all_trips.groupby(TF.s2id, as_index=False).agg({CF.fare_amount: "mean"})
 
     merged_result = f.cache.merge_single_day_df(query_result_df)
     if merged_result is None:
         raise RequestException("Empty Result")
 
-    return json2http_ok(df2json_list(merged_result))
+    return json2http(df2json_list(merged_result), partial_result)
 
 
 @handle_exceptions
 def average_speed_of_date(date):
+    from query.table_schema import YellowGreenCommonFields as CF
+
+    class TF:
+        trip_count = "trip_count"
+        avg_speed = "average_speed"
+        timediff_part = "SECOND"
+        if backend == SqlBackend.SQLITE:
+            timediff_part = f"'{timediff_part}'"
+
     f = SqlDateFilter(backend, whoami())
     f.set_date(date)
 
+    partial_result = False
     result_dfs = list()
-    date_col = "pickup_datetime"
-    trip_count = "trip_count"
-    avg_speed = "average_speed"
-
-    timediff_part = "SECOND"
-    if backend == SqlBackend.SQLITE:
-        timediff_part = f"'{timediff_part}'"
+    date_col = CF.pickup_datetime
 
     if f.requires_query:
         for table_group in ["tlc_green_trips", "tlc_yellow_trips"]:
             query = (
-                f"SELECT AVG(trip_distance / DATETIME_DIFF(dropoff_datetime, pickup_datetime, {timediff_part}) * 3600) AS {avg_speed}, "
-                f"COUNT({date_col}) AS {trip_count} "
+                f"SELECT AVG({CF.trip_distance} / "
+                f"DATETIME_DIFF({CF.dropoff_datetime}, {CF.pickup_datetime}, {TF.timediff_part}) * 3600) "
+                f"AS {TF.avg_speed}, "
+                f"COUNT({date_col}) AS {TF.trip_count} "
                 f"FROM {f.table_name.format(table_group)} "
                 f"WHERE {f.condition_placeholder} "
-                f"AND dropoff_datetime IS NOT NULL AND pickup_datetime IS NOT NULL AND trip_distance IS NOT NULL "
+                f"AND {CF.dropoff_datetime} IS NOT NULL AND {CF.pickup_datetime} IS NOT NULL "
+                f"AND {CF.trip_distance} IS NOT NULL AND {CF.dropoff_datetime} != {CF.pickup_datetime} "
                 f"GROUP BY date({date_col})")
             result = f.query(query, date_col)
 
             if not result.is_empty:
                 result_dfs.append(result.response)
 
+            partial_result = partial_result or result.exceed_limit
+
     if not result_dfs:
         query_result_df = None
     else:
         all_avg_speed = pd.concat(result_dfs)
-        query_result_df = pd.DataFrame(data={avg_speed: [
-            (all_avg_speed[trip_count] / all_avg_speed[trip_count].sum() * all_avg_speed[avg_speed]).sum()]})
+        query_result_df = pd.DataFrame(data={TF.avg_speed: [
+            (all_avg_speed[TF.trip_count] / all_avg_speed[TF.trip_count].sum() * all_avg_speed[TF.avg_speed]).sum()]})
 
     merged_result = f.cache.merge_single_day_df(query_result_df)
     if merged_result is None:
         raise RequestException("Empty Result")
 
-    return json2http_ok(df2json_list(merged_result))
+    return json2http(df2json_list(merged_result), partial_result)

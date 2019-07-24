@@ -16,7 +16,7 @@ class SqlDateFilter:
     def __init__(self, backend_name, query_name):
         self.backend = get_sql_backend(backend_name)
         self.tables = self.backend.tables
-        self.cache = DateRangeCache(query_name)
+        self.cache = DateRangeCache(str(backend_name) + query_name)
         self.date_range_pairs = None
 
     def set_date_range(self, start_date, end_date):
@@ -53,7 +53,7 @@ class SqlDateFilter:
 
         if date_start > date_end:
             raise RequestException(
-                f"start date {D.to_string(date_start)} must be earlier than end date {D.to_string(date_end)}")
+                f"start date {D.date_to_string(date_start)} must be earlier than end date {D.date_to_string(date_end)}")
 
         self.date_range_pairs = self.cache.determine_uncached_dates(date_start, date_end)
         # self.date_range_pairs.sort()
@@ -93,8 +93,8 @@ class SqlDateFilter:
         conditions = list()
 
         for date_start, date_end in date_range_pairs:
-            start_date_str = D.to_string(date_start)
-            end_date_str = D.to_string(date_end)
+            start_date_str = D.date_to_string(date_start)
+            end_date_str = D.date_to_string(date_end)
 
             if date_start == date_end:
                 conditions.append(f"(date({date_col})='{start_date_str}')")
