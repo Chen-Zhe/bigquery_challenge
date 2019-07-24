@@ -1,10 +1,9 @@
 from datetime import timedelta
-from io import BytesIO
 
 import pandas as pd
-import pyarrow.parquet as pq
 
 from cache.backend.redis import RedisCache
+from cache.backend.serialize import DataFrameSerializer as DFS
 from conf import DateRangeCacheConfig
 from query.types.date.utils import DateFormat as D
 
@@ -87,9 +86,9 @@ class DateRangeCache:
         for date, cache in zip(self.dates, self.cached_content):
             if cache is not None:
                 uncached_dates.remove(date)
-
-                if len(cache) != 0:
-                    valid_dfs.append(pq.read_table(BytesIO(cache)).to_pandas())
+                date_df = DFS.deserialize(cache)
+                if date_df is not None:
+                    valid_dfs.append(date_df)
 
         if df is not None:
             valid_dfs.append(df)
@@ -102,7 +101,7 @@ class DateRangeCache:
                 self.df_to_cache(date, group)
                 uncached_dates.remove(date)
 
-        # these uncached dates doesn't have data stored
+        # these uncached dates doesn't have data stored, so a fill-in is required
         for date in uncached_dates:
             self.df_to_cache(date, None)
 
@@ -116,22 +115,12 @@ class DateRangeCache:
     def merge_single_day_df(self, df):
         if self.cached_content is not None:
             # the date is cached. return cached result
-            if len(self.cached_content) == 0:
-                return None
-            else:
-                return pq.read_table(BytesIO(self.cached_content)).to_pandas()
-
+            return DFS.deserialize(self.cached_content)
         else:
-            if df is None:
-                self.df_to_cache(self.dates, None)
-            else:
-                self.df_to_cache(self.dates, df)
+            # Write query result to cache
+            self.df_to_cache(self.dates, df)
             return df
 
     def df_to_cache(self, date, df):
-        if df is None:
-            self.c.set(self.gen_cache_key(date), "")
-        else:
-            buffer = BytesIO()
-            df.to_parquet(buffer)
-            self.c.set(self.gen_cache_key(date), buffer.getvalue())
+        # None case is handled by serializer
+        self.c.set(self.gen_cache_key(date), DFS.serialize(df))
