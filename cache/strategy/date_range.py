@@ -9,11 +9,21 @@ from query.types.date.utils import DateFormat as D
 
 
 def inclusive_date_range(date_start, date_end):
+    """
+    Generate an iterator of dates between start and end (include both ends)
+    :param date_start: start date
+    :param date_end: end date
+    :return: iterator
+    """
     for n in range((date_end - date_start).days + 1):
         yield date_start + timedelta(days=n)
 
 
 class DateRangeCache:
+    """
+    Caching strategy for data of a certain date range or a single date
+    """
+
     Conf = DateRangeCacheConfig
 
     def __init__(self, query_name):
@@ -82,6 +92,7 @@ class DateRangeCache:
     def merge_multi_day_df(self, df, date_col):
         valid_dfs = list()
         uncached_dates = set(self.dates)
+        key_value_to_cache = dict()
 
         for date, cache in zip(self.dates, self.cached_content):
             if cache is not None:
@@ -98,12 +109,16 @@ class DateRangeCache:
                 if isinstance(date, str):
                     date = D.validate_date_string(date)
 
-                self.df_to_cache(date, group)
+                k, v = self.df2key_value_pairs(date, group)
+                key_value_to_cache[k] = v
                 uncached_dates.remove(date)
 
         # these uncached dates doesn't have data stored, so a fill-in is required
         for date in uncached_dates:
-            self.df_to_cache(date, None)
+            k, v = self.df2key_value_pairs(date, None)
+            key_value_to_cache[k] = v
+
+        self.c.set_multi(key_value_to_cache)
 
         if valid_dfs:
             # There are DataFrames to be merged
@@ -118,9 +133,10 @@ class DateRangeCache:
             return DFS.deserialize(self.cached_content)
         else:
             # Write query result to cache
-            self.df_to_cache(self.dates, df)
+            k, v = self.df2key_value_pairs(self.dates, df)
+            self.c.set(k, v)
             return df
 
-    def df_to_cache(self, date, df):
+    def df2key_value_pairs(self, date, df):
         # None case is handled by serializer
-        self.c.set(self.gen_cache_key(date), DFS.serialize(df))
+        return self.gen_cache_key(date), DFS.serialize(df)
