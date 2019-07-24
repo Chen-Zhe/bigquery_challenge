@@ -95,6 +95,7 @@ class DateRangeCache:
             valid_dfs.append(df)
 
             for date, group in df.groupby(date_col):
+                # assumes that date column is either a valid date string or date object
                 if isinstance(date, str):
                     date = D.validate_date_string(date)
 

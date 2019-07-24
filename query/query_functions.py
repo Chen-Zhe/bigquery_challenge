@@ -3,7 +3,7 @@ import pandas as pd
 
 from conf import SqlBackendConfig
 from errors import *
-from query.query_commons import df2json_list, json2http_ok
+from query.query_commons import df2json_list, json2http
 from query.sql.backend_factory import SqlBackend
 from query.types.date.date_filter_query import SqlDateFilter
 
@@ -49,6 +49,8 @@ def total_trips_over_date_range(start_date, end_date):
 
     result_dfs = list()
 
+    partial_result = False
+
     if f.requires_query:
         for table_group in ["tlc_green_trips", "tlc_yellow_trips"]:
             query = (
@@ -61,6 +63,8 @@ def total_trips_over_date_range(start_date, end_date):
             if not result.is_empty:
                 result_dfs.append(result.response)
 
+            partial_result = partial_result or result.exceed_limit
+
     if not result_dfs:
         query_result_df = None
     else:
@@ -71,7 +75,7 @@ def total_trips_over_date_range(start_date, end_date):
     if merged_result is None:
         raise RequestException("Empty Result")
 
-    return json2http_ok(df2json_list(merged_result))
+    return json2http(df2json_list(merged_result), partial_result)
 
 
 @handle_exceptions
@@ -91,6 +95,7 @@ def average_fare_heatmap_of_date(date):
     date_col = "pickup_datetime"
     s2id = "s2id"
     result_dfs = list()
+    partial_result = False
 
     if f.requires_query:
         for table_group in ["tlc_green_trips", "tlc_yellow_trips"]:
@@ -104,6 +109,8 @@ def average_fare_heatmap_of_date(date):
             if not result.is_empty:
                 result_dfs.append(result.response)
 
+            partial_result = partial_result or result.exceed_limit
+
     if not result_dfs:
         query_result_df = None
     else:
@@ -115,7 +122,7 @@ def average_fare_heatmap_of_date(date):
     if merged_result is None:
         raise RequestException("Empty Result")
 
-    return json2http_ok(df2json_list(merged_result))
+    return json2http(df2json_list(merged_result), partial_result)
 
 
 @handle_exceptions
@@ -123,6 +130,7 @@ def average_speed_of_date(date):
     f = SqlDateFilter(backend, whoami())
     f.set_date(date)
 
+    partial_result = False
     result_dfs = list()
     date_col = "pickup_datetime"
     trip_count = "trip_count"
@@ -147,6 +155,8 @@ def average_speed_of_date(date):
             if not result.is_empty:
                 result_dfs.append(result.response)
 
+            partial_result = partial_result or result.exceed_limit
+
     if not result_dfs:
         query_result_df = None
     else:
@@ -158,4 +168,4 @@ def average_speed_of_date(date):
     if merged_result is None:
         raise RequestException("Empty Result")
 
-    return json2http_ok(df2json_list(merged_result))
+    return json2http(df2json_list(merged_result), partial_result)

@@ -61,7 +61,5 @@ class Sqlite3Backend:
             exceed_limit = total_rows > limit
             if exceed_limit:
                 logger.warning(f"Query limit of {limit} is reached in query: {sql_string}")
-        df =pd.DataFrame(data=data, columns=columns)
-        df['date'] = df['date'].astype('datetime64[D]')
-        print(df)
-        return QueryResponse(df, total_rows > limit, False)
+
+        return QueryResponse(pd.DataFrame(data=data, columns=columns), total_rows > limit, False)

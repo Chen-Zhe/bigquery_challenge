@@ -27,5 +27,5 @@ class DateFormat:
             raise RequestException("Invalid date string")
 
     @staticmethod
-    def to_string(date):
+    def date_to_string(date):
         return date.strftime(DateFormat.supported_date_format)
