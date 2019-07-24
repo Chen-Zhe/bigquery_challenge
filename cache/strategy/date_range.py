@@ -106,7 +106,12 @@ class DateRangeCache:
         for date in uncached_dates:
             self.df_to_cache(date, None)
 
-        return pd.concat(valid_dfs)
+        if valid_dfs:
+            # There are DataFrames to be merged
+            return pd.concat(valid_dfs)
+        else:
+            # No DataFrame to be merged
+            return None
 
     def merge_single_day_df(self, df):
         if self.cached_content is not None:
