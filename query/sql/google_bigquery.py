@@ -5,6 +5,7 @@ from google.cloud.bigquery import Client
 from conf import BigQueryConfig
 from query.query_commons import QueryResponse
 from query.sql.tables.google_bigquery import tables
+from query.table_schema import ResultCommonFields as RCF
 from query.types.date.utils import DateFormat as D
 
 logger = logging.getLogger(__name__)
@@ -35,8 +36,8 @@ class BigQueryBackend:
 
             df = query_result.to_dataframe()
             # Convert date object into string
-            # This is because string can be serialized consistently
-            if "date" in df.columns:
-                df['date'] = df.apply(lambda x: D.date_to_string(x['date']), axis=1)
+            # This is because string can be serialized consistently but the objects cannot
+            if RCF.date in df.columns:
+                df[RCF.date] = df.apply(lambda x: D.date_to_string(x[RCF.date]), axis=1)
 
             return QueryResponse(df, exceed_limit, False)
