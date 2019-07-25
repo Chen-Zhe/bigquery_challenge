@@ -2,7 +2,7 @@ import json
 import logging
 from functools import wraps
 
-from http.http_commons import HttpResponse
+from http_json.http_commons import HttpResponse
 
 logger = logging.getLogger(__name__)
 

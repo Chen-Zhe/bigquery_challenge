@@ -1,6 +1,6 @@
 from enum import Enum, auto
 
-from http.errors import ServerException
+from http_json.errors import ServerException
 
 
 class SqlBackend(Enum):

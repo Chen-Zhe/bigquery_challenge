@@ -4,10 +4,10 @@ import numpy as np
 import pandas as pd
 
 from conf import SqlBackendConfig
-from http.errors import *
-from http.http_commons import df2json_list, json2http
+from http_json.errors import *
+from http_json.http_commons import df2json_list, json2http
 from query.sql.backend_factory import SqlBackend
-from query.types.date.date_filter_query import SqlDateFilter
+from query.types.date.date_filter import SqlDateFilter
 
 backend = SqlBackendConfig.backend
 

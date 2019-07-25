@@ -2,7 +2,7 @@ import re
 from datetime import datetime
 
 from cache.strategy.date_range import DateRangeCache
-from http.errors import *
+from http_json.errors import *
 from query.sql.backend_factory import get_sql_backend
 from query.types.date.utils import DateFormat as D
 
