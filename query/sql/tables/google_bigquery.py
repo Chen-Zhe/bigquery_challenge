@@ -1,3 +1,5 @@
+# This file defines the tables in use in Google Big Query
+
 from query.sql.tables.collection import DataTable, SqlTableCollection
 
 tables = SqlTableCollection(["tlc_green_trips", "tlc_yellow_trips"])

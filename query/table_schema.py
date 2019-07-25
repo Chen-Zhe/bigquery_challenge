@@ -1,3 +1,6 @@
+# this file defines table column names to be used throughout the system
+
+
 class YellowGreenCommonFields:
     pickup_datetime = "pickup_datetime"
     dropoff_datetime = "dropoff_datetime"

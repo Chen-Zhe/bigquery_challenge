@@ -11,10 +11,18 @@ from query.sql.tables.sqlite import tables
 logger = logging.getLogger(__name__)
 
 
-def _datetime_diff(date_end_str, date_start_str, part):
+def _datetime_diff(datetime_end_str, datetime_start_str, part):
+    """
+    Calculate the difference between 2 datetime strings by defined accuracy (part)
+    Compatibility function to allow interoperable query with Google Big Query
+    :param datetime_end_str: datetime string
+    :param datetime_start_str: datetime string
+    :param part: accuracy. Currently supports DAY, SECOND, HOUR
+    :return: int
+    """
     try:
-        date_end = dateutil.parser.parse(date_end_str)
-        date_start = dateutil.parser.parse(date_start_str)
+        date_end = dateutil.parser.parse(datetime_end_str)
+        date_start = dateutil.parser.parse(datetime_start_str)
 
         diff = (date_end - date_start).total_seconds()
 
@@ -38,13 +46,24 @@ class Sqlite3Backend:
     tables = tables
 
     def __init__(self, db_path=SqliteConfig.database_file):
+        """
+        Constructor
+        :param db_path: path to Sqlite Database file
+        """
         self.conn = sqlite3.connect(db_path)
         self.conn.row_factory = sqlite3.Row
         self.cursor = self.conn.cursor()
 
+        # register compatibility function with Sqlite
         self.conn.create_function("DATETIME_DIFF", 3, _datetime_diff)
 
     def query(self, sql_string="", limit=SqliteConfig.default_query_limit):
+        """
+        Run SQL query in this backend
+        :param sql_string: SQL string
+        :param limit: return row limit
+        :return: QueryResponse
+        """
         if not sql_string:
             return QueryResponse(None, exceed_limit=False, is_empty=True)
 

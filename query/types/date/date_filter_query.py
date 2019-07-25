@@ -8,18 +8,31 @@ from query.types.date.utils import DateFormat as D
 
 
 class SqlDateFilter:
+    """Complete Date-related SQL queries with support for caching"""
+
     condition_placeholder = "#DateCondition"
     table_name_prefix = "#TableGroup"
     table_name = table_name_prefix + "({})"
     table_name_regex = table_name_prefix + r"\({}\)"
 
-    def __init__(self, backend_name, query_name):
-        self.backend = get_sql_backend(backend_name)
+    def __init__(self, backend, query_name):
+        """
+        Constructor
+        :param backend: Selected backend (as a Enum member)
+        :param query_name: Unique identifier (string) of the query as the cache key
+        """
+        self.backend = get_sql_backend(backend)
         self.tables = self.backend.tables
-        self.cache = DateRangeCache(str(backend_name) + query_name)
+        self.cache = DateRangeCache(str(backend) + query_name)
         self.date_range_pairs = None
 
     def set_date_range(self, start_date, end_date):
+        """
+        Set querying date range for subsequent queries
+        :param start_date: date string in valid format or None
+        :param end_date: date string in valid format or None
+        :return: nothing
+        """
         if not start_date and not end_date:
             # if nothing is specified, query for today
             self.validate_date_range(datetime.now().date())
@@ -35,6 +48,11 @@ class SqlDateFilter:
             self.validate_date_range(date_start, date_end)
 
     def set_date(self, date):
+        """
+        Set querying date for subsequent queries and check if result of the date is cached
+        :param date: date string in valid format or None
+        :return: nothing
+        """
         if not date:
             # if nothing is specified, query for today
             date = datetime.now().date()
@@ -48,6 +66,12 @@ class SqlDateFilter:
             self.date_range_pairs = [(date, date)]
 
     def validate_date_range(self, date_start, date_end=None):
+        """
+        helper function for set_date_range to validate date range and query cache for uncached date ranges
+        :param date_start:
+        :param date_end:
+        :return:
+        """
         if date_end is None:
             date_end = date_start
 
@@ -60,9 +84,16 @@ class SqlDateFilter:
 
     @property
     def requires_query(self):
+        """data_range_pairs would be set to empty if all results are cached"""
         return bool(self.date_range_pairs)
 
     def query(self, query, date_col):
+        """
+        Automatically complete a SQL query in terms of date filter condition and tables
+        :param query: incomplete SQL query with placeholders for date filter condition and tables
+        :param date_col: date column to use in filtering in the SQL table
+        :return: QueryResponse
+        """
         if not self.requires_query:
             return self.backend.query()
 
@@ -72,10 +103,12 @@ class SqlDateFilter:
         if query.find(self.table_name_prefix) == -1:
             raise QueryGenerationException("Incorrect query configuration: table names cannot be inserted")
 
+        # generate and replace placeholder for date filter conditions
         query = query.replace(self.condition_placeholder,
                               self.gen_sql_date_range_condition(date_col, self.date_range_pairs))
 
         # date range pairs should be mutually exclusive
+        # get and replace placeholder for relevant tables
         tables = self.get_table_groups(query, self.date_range_pairs[0][0], self.date_range_pairs[-1][1])
 
         if tables:
@@ -90,6 +123,12 @@ class SqlDateFilter:
 
     @staticmethod
     def gen_sql_date_range_condition(date_col, date_range_pairs):
+        """
+        Generate SQL date range conditions given a list of date range pairs
+        :param date_col: date column to use in filtering
+        :param date_range_pairs: list of date range pairs (both ends are inclusive)
+        :return: SQL filter condition string
+        """
         conditions = list()
 
         for date_start, date_end in date_range_pairs:
@@ -104,6 +143,13 @@ class SqlDateFilter:
         return f"({' OR '.join(conditions)})"
 
     def get_table_groups(self, query, date_start, date_end):
+        """
+        Find all table group placeholders within a query and find the relevant tables
+        :param query: SQL query string
+        :param date_start: starting date
+        :param date_end: end date
+        :return: dict of table group name with list of tables
+        """
         matched_table_names = re.findall(self.table_name_regex.format(r"\S+"), query)
 
         relevant_tables = dict()
@@ -118,6 +164,6 @@ class SqlDateFilter:
             if not relevant_group_tables:
                 return dict()
 
-            relevant_tables[group_name] = [table.sql_name for table in relevant_group_tables]
+            relevant_tables[group_name] = relevant_group_tables
 
         return relevant_tables

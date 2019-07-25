@@ -9,6 +9,7 @@ class SqlBackend(Enum):
 
 
 def get_sql_backend(name, *args):
+    """Get required SQL backend and initialize it"""
     if name == SqlBackend.BIG_QUERY:
         from query.sql.google_bigquery import BigQueryBackend
         return BigQueryBackend(*args)
