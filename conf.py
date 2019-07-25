@@ -1,9 +1,12 @@
 # This is the configuration file for all components
 
+
 class DateRangeCacheConfig:
     host = "localhost"
     port = 6379
     password = None
+    socket_connect_timeout = 1
+    socket_timeout = 1
 
 
 class SqlBackendConfig:
