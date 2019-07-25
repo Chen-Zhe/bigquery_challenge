@@ -4,7 +4,8 @@ from io import BytesIO
 
 class DataFrameSerializer:
     """
-    Serialize/De-serialize Pandas DataFrame to/from Bytes
+    Serialize/De-serialize Pandas DataFrame to/from Bytes using PyArrow
+    Note that Parquet format doesn't allow mixed data types for a column
     """
     @staticmethod
     def serialize(df):
