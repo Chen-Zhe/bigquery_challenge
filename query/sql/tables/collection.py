@@ -1,4 +1,4 @@
-from http.errors import ServerException
+from http_json.errors import ServerException
 from query.types.date.utils import DateFormat as D
 
 

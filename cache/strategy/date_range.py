@@ -29,7 +29,9 @@ class DateRangeCache:
     Conf = DateRangeCacheConfig
 
     def __init__(self, query_name):
-        self.c = RedisCache(host=self.Conf.host, port=self.Conf.port, password=self.Conf.password)
+        self.c = RedisCache(host=self.Conf.host, port=self.Conf.port,
+                            password=self.Conf.password, socket_connect_timeout=self.Conf.socket_connect_timeout,
+                            socket_timeout=self.Conf.socket_timeout)
         self.curr_query = query_name
         self.dates = None
         self.cached_content = None
