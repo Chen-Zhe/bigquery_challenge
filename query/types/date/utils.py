@@ -2,7 +2,7 @@ from datetime import datetime
 import logging
 
 from conf import DataFormatConfig
-from errors import RequestException
+from http.errors import RequestException
 
 logger = logging.getLogger(__name__)
 
