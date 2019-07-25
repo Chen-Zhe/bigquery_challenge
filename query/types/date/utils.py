@@ -13,7 +13,7 @@ class DateFormat:
     @staticmethod
     def validate_date_string(date_string):
         """
-        Check if the given date string conforms to the required ISO format (YYYY-MM-DD). Raise exception if it doesn't
+        Check if the given date string conforms to the supported date format. Raise exception if it doesn't
         :param date_string: string representing a date
         :return: Date object
         """
@@ -28,4 +28,9 @@ class DateFormat:
 
     @staticmethod
     def date_to_string(date):
+        """
+        convert date/datetime to supported date format string
+        :param date: date/datetime object
+        :return: string
+        """
         return date.strftime(DateFormat.supported_date_format)

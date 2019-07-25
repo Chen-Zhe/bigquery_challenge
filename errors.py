@@ -20,6 +20,7 @@ class QueryGenerationException(ServerException):
 
 
 def handle_exceptions(f):
+    """decorator to automatically wrap a API function and return error message when exceptions are encountered"""
     @wraps(f)
     def decorated(*args, **kwargs):
         error_msg = {"status": "", "data": list()}

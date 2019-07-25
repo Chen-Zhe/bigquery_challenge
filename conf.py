@@ -1,3 +1,5 @@
+# This is the configuration file for all components
+
 class DateRangeCacheConfig:
     host = "localhost"
     port = 6379

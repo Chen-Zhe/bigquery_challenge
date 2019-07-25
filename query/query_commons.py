@@ -3,6 +3,9 @@ from enum import Enum
 
 
 class QueryResponse:
+    """
+    Data object to store SQL query response
+    """
     def __init__(self, response, exceed_limit, is_empty):
         self.response = response
         self.exceed_limit = exceed_limit
@@ -10,6 +13,9 @@ class QueryResponse:
 
 
 class HttpResponse:
+    """
+    Data object to store HTTP response
+    """
     class ContentType(Enum):
         JSON = "application/json"
         TEXT = "text/plain"
@@ -31,10 +37,17 @@ class HttpResponse:
 
 
 def df2json_list(df):
+    """Pandas dataframe to row-wise list of dict"""
     return df.to_dict(orient="records")
 
 
 def json2http(json_list, partial=False):
+    """
+    wrap JSON into HttpResponse
+    :param json_list: list of dict
+    :param partial: whether the query reached pre-defined limit
+    :return: HttpResponse
+    """
     if partial:
         status = "Partial Result"
     else:
