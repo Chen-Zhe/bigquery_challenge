@@ -11,7 +11,7 @@ class DateRangeCacheConfig:
 
 class SqlBackendConfig:
     from query.sql.backend_factory import SqlBackend
-    backend = SqlBackend.SQLITE
+    backend = SqlBackend.BIG_QUERY
 
 
 class DataFormatConfig:
@@ -20,7 +20,7 @@ class DataFormatConfig:
 
 class DevServerConfig:
     host = "localhost"
-    port = 5000
+    port = 8080
     debug = True
 
 
