@@ -16,7 +16,7 @@ class SerializeTest(unittest.TestCase):
 
     def test_none_case(self):
         actual = DataFrameSerializer.deserialize(DataFrameSerializer.serialize(None))
-        self.assertTrue(actual is None)
+        self.assertIsNone(actual)
 
 
 if __name__ == '__main__':
